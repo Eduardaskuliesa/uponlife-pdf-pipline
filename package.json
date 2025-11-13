@@ -1,0 +1,28 @@
+{
+  "name": "new-folder",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon --exec tsx src/server.ts",
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.922.0",
+    "@aws-sdk/lib-storage": "^3.922.0",
+    "@hono/node-server": "^1.19.6",
+    "dotenv": "^17.2.3",
+    "hono": "^4.10.4",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "nodemon": "^3.0.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
