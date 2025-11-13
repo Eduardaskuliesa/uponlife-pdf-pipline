@@ -1,14 +1,9 @@
-// src/server.ts
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { pdfRoutes } from "./routes/pdf";
 import { htmlRoutes } from "./routes/html";
 import config from "./config";
 import { AppDataSource } from "./data-source";
-import { initAssets } from "./initAssets";
-
-process.stdout.setDefaultEncoding("utf8");
-process.stderr.setDefaultEncoding("utf8");
 
 async function start() {
   console.log("=== NODE.JS APP STARTING ===");
@@ -32,7 +27,9 @@ async function start() {
   app.route("/", pdfRoutes);
   app.route("/", htmlRoutes);
 
-  serve({ fetch: app.fetch, port: 8080 });
+  const port = parseInt(process.env.PORT || "8080");
+
+  serve({ fetch: app.fetch, port: port });
 }
 
 start();

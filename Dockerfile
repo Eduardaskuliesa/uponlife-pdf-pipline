@@ -18,7 +18,6 @@ RUN npm install
 
 COPY tsconfig.json ./
 COPY src ./src
-COPY .env ./
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
