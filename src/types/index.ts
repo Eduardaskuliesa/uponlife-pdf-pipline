@@ -1,7 +1,8 @@
 export interface Block {
   type: string;
   content: string;
-  pageBreak?: boolean;
+  imgUrl?: string;
+  captions?: string;
 }
 
 export interface GeneratePdfRequest {

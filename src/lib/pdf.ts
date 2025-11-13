@@ -1,8 +1,8 @@
 export async function generatePdf(html: string): Promise<ArrayBuffer> {
   const formData = new FormData();
-  formData.append(
+   formData.append(
     "files",
-    new Blob([html], { type: "text/html" }),
+    new Blob([html], { type: "text/html; charset=utf-8" }),
     "index.html"
   );
   formData.append("printBackground", "true");

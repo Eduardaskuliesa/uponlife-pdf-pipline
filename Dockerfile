@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y xz-utils \
 
 WORKDIR /app
 
+ENV PORT=3000
 
 COPY package*.json ./
 RUN npm install
