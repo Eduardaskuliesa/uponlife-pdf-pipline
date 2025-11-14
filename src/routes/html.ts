@@ -3,43 +3,19 @@ import { Book } from "../entities/book.entity";
 import { Question } from "../entities/questions.entity";
 import { Section } from "../entities/section.entity";
 import { In } from "typeorm";
-import { buildHtml } from "../lib/html";
+import { buildDummyToc, buildHtml, buildRealToc } from "../lib/html";
 import { uploadToS3 } from "../services/s3";
-import type { Block } from "../types";
 import { File } from "../entities/file.entity";
 import { supabase } from "../services/supabase-client";
 import { Heading } from "../lib/create-heading-block";
 import { HeadingBlock } from "../types/block";
-import { generatePdf } from "../lib/pdf";
-
-async function getImageFromBucket(
-  bookId: string,
-  imageId: string
-): Promise<ArrayBuffer> {
-  // Get the file path from database
-  const image = await File.findOne({ where: { id: imageId } });
-
-  if (!image?.path) {
-    throw new Error(`Image not found: ${imageId}`);
-  }
-
-  console.log(`Downloading image from path: ${image.path}`);
-
-  const { data, error } = await supabase.storage
-    .from("files")
-    .download(image.path);
-
-  if (error) {
-    console.error("Supabase storage error:", error);
-    throw new Error(`Failed to download image: ${JSON.stringify(error)}`);
-  }
-
-  if (!data) {
-    throw new Error("No data returned from storage");
-  }
-
-  return await data.arrayBuffer();
-}
+import {
+  addPageNumbers,
+  addWatermark,
+  generatePdf,
+  mergePdfs,
+} from "../lib/pdf";
+import { PDFDocument } from "pdf-lib";
 
 export const htmlRoutes = new Hono();
 
@@ -48,6 +24,8 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
   const bookId = c.req.param("bookId");
 
   try {
+    // ========== PHASE 1: DATA FETCHING ==========
+    console.time("Phase 1: Data Fetching");
     const book = await Book.findOne({ where: { id: bookId } });
     if (!book) {
       return c.json({ error: "Book not found" }, 404);
@@ -65,7 +43,11 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     const sections = await Section.find({
       where: { question_id: In(questions.map((q) => q.id)) },
     });
-    console.time("Sections Grouping Time");
+    console.timeEnd("Phase 1: Data Fetching");
+
+    // ========== PHASE 2: DATA NORMALIZATION ==========
+    console.time("Phase 2: Data Normalization");
+
     const sectionsByQuestion = sections.reduce((acc, section) => {
       if (!acc[section.question_id]) {
         acc[section.question_id] = [];
@@ -80,7 +62,6 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
       );
 
       const question = questions.find((q) => q.id === questionId);
-
       if (question) {
         const headingBlock = new (Heading as any)(
           question.id,
@@ -89,37 +70,26 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
         sectionsByQuestion[questionId].unshift(headingBlock);
       }
     });
-    console.timeEnd("Sections Grouping Time");
-    console.time("HTML Blocks Normalization Time");
+
     async function normalizeBlock(item: Section | HeadingBlock) {
       switch (item.type) {
         case "heading":
-          return {
-            type: "heading",
-            content: "text" in item ? item.text : "",
-          };
+          return { type: "heading", content: "text" in item ? item.text : "" };
 
         case "image":
           const parsedContent =
             typeof item.content === "string"
               ? JSON.parse(item.content)
               : item.content;
-
           const imageUrl = parsedContent?.data?.file?.url;
           const imageId = imageUrl.split("/").pop();
-
           const file = await File.findOne({ where: { id: imageId } });
-          if (!file?.path) {
-            throw new Error(`File not found: ${imageId}`);
-          }
+          if (!file?.path) throw new Error(`File not found: ${imageId}`);
 
           const { data } = await supabase.storage
             .from("files")
             .download(file.path);
-
-          if (!data) {
-            throw new Error("Failed to download image");
-          }
+          if (!data) throw new Error("Failed to download image");
 
           const arrayBuffer = await data.arrayBuffer();
           const base64 = Buffer.from(arrayBuffer).toString("base64");
@@ -134,53 +104,117 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
           };
 
         case "paragraph":
-          return {
-            type: "paragraph",
-            content: item.content?.data?.text || "",
-          };
+          return { type: "paragraph", content: item.content?.data?.text || "" };
 
         default:
           throw new Error(`Unknown block type: ${item.type}`);
       }
     }
 
-    const contentBlocks: Block[] = await Promise.all(
-      questions.flatMap((question) => {
+    const normalizedChapters = await Promise.all(
+      questions.map(async (question) => {
         const sections = sectionsByQuestion[question.id] || [];
-        return sections.map((section) => normalizeBlock(section));
+        const blocks = await Promise.all(sections.map(normalizeBlock));
+        return { question, blocks };
       })
     );
-    console.timeEnd("HTML Blocks Normalization Time");
-    console.time("HTML Generation Time");
-    const [normalHtml, withWatermark] = await Promise.all([
-      buildHtml(contentBlocks, false),
-      buildHtml(contentBlocks, true),
-    ]);
+    console.timeEnd("Phase 2: Data Normalization");
 
-    console.timeEnd("HTML Generation Time");
-    console.time("PDF Generation Time");
+    // ========== PHASE 3: TOC PAGE CALCULATION ==========
+    console.time("Phase 3: TOC Calculation");
+    const chapterTitles = questions
+      .map((q) => q.question)
+      .filter((title): title is string => title !== undefined);
 
-    const [pdfBufferNormal, pdfBufferWithWatermark] = await Promise.all([
-      generatePdf(normalHtml),
-      generatePdf(withWatermark),
+    const dummyTocHtml = buildDummyToc(chapterTitles);
+    const dummyTocBuffer = await generatePdf(dummyTocHtml);
+    const tocPageCount = (
+      await PDFDocument.load(dummyTocBuffer)
+    ).getPageCount();
+
+    const reservedPages = 2;
+    const totalFrontPages = reservedPages + tocPageCount;
+    const needsBlankPage = totalFrontPages % 2 === 1;
+    let currentPage = needsBlankPage
+      ? totalFrontPages + 2
+      : totalFrontPages + 1;
+
+    console.log(
+      `TOC pages: ${tocPageCount}, Needs blank: ${needsBlankPage}, Content starts: ${currentPage}`
+    );
+    console.timeEnd("Phase 3: TOC Calculation");
+
+    // ========== PHASE 4: CHAPTER GENERATION ==========
+    console.time("Phase 4: Chapter Generation");
+
+    const chapterData: Array<{
+      title: string;
+      pdf: ArrayBuffer;
+      page: number;
+    }> = [];
+
+    let page = currentPage;
+    for (const { question, blocks } of normalizedChapters) {
+      const chapterHtml = buildHtml(blocks, false);
+      const chapterPdf = await generatePdf(chapterHtml);
+      const pageCount = (await PDFDocument.load(chapterPdf)).getPageCount();
+
+      chapterData.push({
+        title: question.question || "",
+        pdf: chapterPdf,
+        page,
+      });
+      page += pageCount;
+    }
+
+    const chapterPages: Array<{ title: string; page: number }> = [];
+    const chapterPdfs = await Promise.all(
+      chapterData.map(async (chapter) => {
+        chapterPages.push({ title: chapter.title, page: chapter.page });
+        return await addPageNumbers(chapter.pdf, chapter.page);
+      })
+    );
+
+    console.timeEnd("Phase 4: Chapter Generation");
+
+    // ========== PHASE 5: TOC GENERATION ==========
+    console.time("Phase 5: TOC Generation");
+    const realTocHtml = buildRealToc(chapterPages, tocPageCount);
+    const realTocBuffer = await generatePdf(realTocHtml);
+    const realTocWithNumbers = await addPageNumbers(realTocBuffer, 3);
+    console.timeEnd("Phase 5: TOC Generation");
+
+    // ========== PHASE 6: PDF ASSEMBLY ==========
+    console.time("Phase 6: PDF Assembly");
+    const finalPdf = await mergePdfs([realTocWithNumbers, ...chapterPdfs]);
+    console.timeEnd("Phase 6: PDF Assembly");
+
+    // ========== PHASE 7: WATERMARK GENERATION ==========
+    console.time("Phase 7: Watermark Generation");
+    const watermarkPdf = await addWatermark(finalPdf);
+    console.timeEnd("Phase 7: Watermark Generation");
+
+    // ========== PHASE 8: S3 UPLOAD ==========
+    console.time("Phase 8: S3 Upload");
+    const s3KeyNormal = `books/${bookId}/${Date.now()}.pdf`;
+    const s3KeyWatermark = `books/${bookId}/${Date.now()}-watermark.pdf`;
+
+    const [pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
+      uploadToS3(finalPdf, s3KeyNormal),
+      uploadToS3(watermarkPdf, s3KeyWatermark),
     ]);
-    console.timeEnd("PDF Generation Time");
-    const s3KeyW = `books/${bookId}/${Date.now()}.pdf`;
-    const s3KeyN = `books/${bookId}/${Date.now()}-watermark.pdf`;
-    console.time("Upload PDF to S3 Time");
-    const [pdfUrlNormal, pdfUrlWithWatermark] = await Promise.all([
-      uploadToS3(pdfBufferNormal, s3KeyN),
-      uploadToS3(pdfBufferWithWatermark, s3KeyW),
-    ]);
-    console.timeEnd("Upload PDF to S3 Time");
+    console.timeEnd("Phase 8: S3 Upload");
+
     console.timeEnd("Total PDF Generation Time");
+
     return c.json({
       success: true,
       bookId,
       chaptersCount: questions.length,
+      pdfUrls: { normal: pdfUrlNormal, watermark: pdfUrlWatermark },
     });
   } catch (error) {
-    console.error("Error generating HTML:", error);
-    return c.json({ error: "Failed to generate HTML" }, 500);
+    console.error("Error generating PDF:", error);
+    return c.json({ error: "Failed to generate PDF" }, 500);
   }
 });

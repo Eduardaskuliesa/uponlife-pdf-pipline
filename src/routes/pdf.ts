@@ -5,6 +5,7 @@ import { buildHtml } from "../lib/html";
 import { generatePdf } from "../lib/pdf";
 import { uploadToS3 } from "../services/s3";
 import config from "../config";
+import { PDFDocument } from "pdf-lib";
 
 export const pdfRoutes = new Hono();
 
@@ -18,6 +19,7 @@ pdfRoutes.post("/generate-pdf", async (c) => {
 
   const html = buildHtml(contentBlocks, !!withWatermark);
   const pdf = await generatePdf(html);
+
 
   return c.body(pdf, 200, { "Content-Type": "application/pdf" });
 });
