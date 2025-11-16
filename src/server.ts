@@ -4,6 +4,7 @@ import { pdfRoutes } from "./routes/pdf";
 import { htmlRoutes } from "./routes/html";
 import config from "./config";
 import { AppDataSource } from "./data-source";
+import { initBrowser } from "./lib/pdf";
 
 async function start() {
   console.log("=== NODE.JS APP STARTING ===");
@@ -17,6 +18,7 @@ async function start() {
   );
   // initAssets();
   await AppDataSource.initialize();
+  await initBrowser();
   console.log("Database connected");
 
   const app = new Hono();

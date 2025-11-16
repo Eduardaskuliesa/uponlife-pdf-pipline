@@ -2,92 +2,142 @@ import { degrees, PDFDocument } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { readFileSync } from "fs";
 import path from "path";
+import puppeteer, { Browser } from "puppeteer-core";
+import pLimit from "p-limit";
 
 const fontRegularPath = path.resolve(
   process.cwd(),
   "src/fonts/cormorant/Cormorant-Regular.ttf"
 );
 
-export async function generatePdf(html: string): Promise<ArrayBuffer> {
-  const formData = new FormData();
+let browser: Browser | null = null;
 
-  formData.append(
-    "files",
-    new Blob([html], { type: "text/html; charset=utf-8" }),
-    "index.html"
-  );
-
-  formData.append("printBackground", "true");
-  formData.append("preferCssPageSize", "true");
-  formData.append("scale", "1");
-
-  const response = await fetch(
-    "http://localhost:3000/forms/chromium/convert/html",
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  return response.arrayBuffer();
+export async function initBrowser() {
+  console.log("Initializing browser...");
+  browser = await puppeteer.launch({
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+    ],
+    headless: true,
+  });
+  console.log("Browser ready!");
 }
+
+async function getBrowser() {
+  if (!browser) {
+    await initBrowser();
+  }
+  return browser!;
+}
+
+const limit = pLimit(4);
+
+export async function generatePdf(html: string) {
+  return limit(async () => {
+    const browser = await getBrowser();
+    const page = await browser.newPage();
+
+    await page.setContent(html, {
+      waitUntil: "domcontentloaded",
+      timeout: 60000,
+    });
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      scale: 1,
+    });
+
+    await page.close();
+    return pdfBuffer.buffer;
+  });
+}
+
+process.on("SIGTERM", async () => {
+  if (browser) {
+    await browser.close();
+    browser = null;
+  }
+});
 
 export async function mergePdfs(
   pdfBuffers: ArrayBuffer[]
 ): Promise<ArrayBuffer> {
-  const formData = new FormData();
+  const mergedPdf = await PDFDocument.create();
 
-  pdfBuffers.forEach((buffer, index) => {
-    formData.append(
-      "files",
-      new Blob([buffer], { type: "application/pdf" }),
-      `${index + 1}.pdf`
-    );
-  });
-
-  const response = await fetch("http://localhost:3000/forms/pdfengines/merge", {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
+  for (const buffer of pdfBuffers) {
+    const pdf = await PDFDocument.load(buffer);
+    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+    copiedPages.forEach((page) => mergedPdf.addPage(page));
   }
 
-  return response.arrayBuffer();
+  return await mergedPdf.save();
 }
 
 export async function addPageNumbers(
   pdfBuffer: ArrayBuffer,
-  startPage: number
+  startPage: number,
+  skipFirstPage = false
 ): Promise<ArrayBuffer> {
   const pdfDoc = await PDFDocument.load(pdfBuffer);
-
   pdfDoc.registerFontkit(fontkit);
 
   const pages = pdfDoc.getPages();
-
   const fontBytes = readFileSync(fontRegularPath);
   const font = await pdfDoc.embedFont(fontBytes);
 
   for (let i = 0; i < pages.length; i++) {
+    if (skipFirstPage && i === 0) continue;
+
     const page = pages[i];
     const { width } = page.getSize();
     const pageNumber = startPage + i;
     const text = `${pageNumber}`;
-
     const textWidth = font.widthOfTextAtSize(text, 8);
 
     page.drawText(text, {
       x: width / 2 - textWidth / 2,
       y: 58,
       size: 12,
-      font: font,
+      font,
     });
+  }
+
+  const pdfBytes = await pdfDoc.save();
+  return pdfBytes.buffer as ArrayBuffer;
+}
+
+const narrtoneLogoPath = path.resolve(
+  process.cwd(),
+  "src/assets/Narratone-logo-header.png"
+);
+
+export async function addFooterLogo(
+  pdfBuffer: ArrayBuffer,
+  widthMm = 45,
+  onlyFirstPage = true
+): Promise<ArrayBuffer> {
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+  const logoBytes = readFileSync(narrtoneLogoPath);
+  const logo = await pdfDoc.embedPng(logoBytes);
+
+  const pages = pdfDoc.getPages();
+  const widthPt = (widthMm / 25.4) * 72;
+  const aspect = logo.width / logo.height;
+  const heightPt = widthPt / aspect;
+
+  const targetPages = onlyFirstPage ? [pages[0]] : pages;
+
+  for (const page of targetPages) {
+    const { width } = page.getSize();
+    const x = width / 2 - widthPt / 2;
+    const y = 58 - heightPt / 2;
+
+    page.drawImage(logo, { x, y, width: widthPt, height: heightPt });
   }
 
   const pdfBytes = await pdfDoc.save();

@@ -2,6 +2,11 @@ import { Block } from "../types";
 import { readFileSync } from "fs";
 import path from "path";
 
+const narrtoneLogoPath = path.resolve(
+  process.cwd(),
+  "src/assets/Narratone-logo-header.svg"
+);
+
 const headingDecor = path.resolve(
   process.cwd(),
   "src/assets/signal-2025-11-13-180533.svg"
@@ -10,6 +15,11 @@ const logoPath = path.resolve(process.cwd(), "src/assets/logo_black.png");
 const fontRegularPath = path.resolve(
   process.cwd(),
   "src/fonts/cormorant/Cormorant-Regular.ttf"
+);
+
+const fontMediumPath = path.resolve(
+  process.cwd(),
+  "src/fonts/cormorant/Cormorant-Medium.ttf"
 );
 const fontBoldPath = path.resolve(
   process.cwd(),
@@ -24,6 +34,15 @@ const fontBoldItalicPath = path.resolve(
   "src/fonts/cormorant/Cormorant-SemiBoldItalic.ttf"
 );
 
+const fontArialPath = path.resolve(
+  process.cwd(),
+  "src/fonts/arial.ttf"
+)
+
+const narrtoneLogoBase64 = `data:image/svg+xml;base64,${readFileSync(
+  narrtoneLogoPath
+).toString("base64")}`;
+
 const headingDecorBase64 = `data:image/svg+xml;base64,${readFileSync(
   headingDecor
 ).toString("base64")}`;
@@ -33,6 +52,11 @@ const logoBase64 = `data:image/png;base64,${readFileSync(logoPath).toString(
 const fontRegularBase64 = `data:font/ttf;base64,${readFileSync(
   fontRegularPath
 ).toString("base64")}`;
+
+const fontMediumBase64 = `data:font/ttf;base64,${readFileSync(
+  fontMediumPath
+).toString("base64")}`;
+
 const fontBoldBase64 = `data:font/ttf;base64,${readFileSync(
   fontBoldPath
 ).toString("base64")}`;
@@ -41,6 +65,10 @@ const fontItalicBase64 = `data:font/ttf;base64,${readFileSync(
 ).toString("base64")}`;
 const fontBoldItalicBase64 = `data:font/ttf;base64,${readFileSync(
   fontBoldItalicPath
+).toString("base64")}`;
+
+const fontArialBase64 = `data:font/ttf;base64,${readFileSync(
+  fontArialPath
 ).toString("base64")}`;
 
 export function buildHtml(
@@ -376,6 +404,78 @@ export function buildRealToc(
             ? '<div style="page-break-before: always; height: 100%;"></div>'
             : ""
         }
+      </body>
+    </html>
+  `;
+}
+
+export function buildTitlePage(author: string, title?: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          @page {
+            size: 152mm 228mm;
+            margin: 14mm 14mm 42mm 14mm;
+          }
+          @font-face {
+            font-family: 'Cormorant';
+            src: url('${fontRegularBase64}');
+            font-weight: normal;
+            font-style: normal;
+          }
+
+          @font-face {
+            font-family: 'Arial';
+            src: url('${fontArialBase64}');
+            font-weight: normal;
+            font-style: normal;
+          }
+          @font-face {
+            font-family: 'Cormorant';
+            src: url('${fontMediumBase64}');
+            font-weight: medium;
+            font-style: normal;
+          }
+          body {
+            font-family: 'Cormorant', serif;
+            margin: 0;
+            padding: 0;
+          }
+
+         .title-page {
+            position: relative;
+            height: 100vh;
+            text-align: center;
+            page-break-after: always;
+          }
+
+          .author {
+            font-family: 'Arial', sans-serif;
+            font-size: 12pt;
+            margin-top: 6mm;
+            font-weight: normal;
+            text-align: center;
+            text-transform: uppercase;
+          }
+
+          .title {
+            font-size: 48pt;
+            text-align: center;
+            text-transform: uppercase;
+            line-height: 1;
+            font-weight: medium;
+            margin-top: 30mm;
+          }
+        </style>
+      </head>
+     <body>
+        <div class="title-page">
+          <div class="author">${author}</div>
+          ${title ? `<div class="title">${title}</div>` : ""}
+        </div>
       </body>
     </html>
   `;
