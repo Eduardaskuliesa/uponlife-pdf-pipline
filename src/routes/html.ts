@@ -9,7 +9,7 @@ import {
   buildRealToc,
   buildTitlePage,
 } from "../lib/html";
-import { uploadToS3 } from "../services/s3";
+import { s3Client, uploadToS3 } from "../services/s3";
 import { File } from "../entities/file.entity";
 import { supabase } from "../services/supabase-client";
 import { Heading } from "../lib/create-heading-block";
@@ -22,6 +22,8 @@ import {
   mergePdfs,
 } from "../lib/pdf";
 import { PDFDocument } from "pdf-lib";
+import { buildCoverLayout } from "../lib/cover1";
+import { text } from "stream/consumers";
 
 export const htmlRoutes = new Hono();
 
@@ -50,35 +52,48 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
       where: { question_id: In(questions.map((q) => q.id)) },
     });
     console.timeEnd("Phase 1: Data Fetching");
+    const totalPageCount = 97;
+    let spineWidht = Math.max(10, 0.1025 * totalPageCount);
+    if (spineWidht < 10) {
+      spineWidht = 10;
+    }
+    console.log(`Calculated spine width: ${spineWidht}mm`);
+    const backgroundColor = book.background_color;
+    const textColor = book.text_color;
+    console.log(textColor, backgroundColor);
+    const authorName = book.author_name || "";
+    const html = buildCoverLayout(spineWidht, {
+      backgroundColor,
+      textColor,
+      authorName,
+      logoText: "Narratone",
+    });
+    const pdf = await generatePdf(html);
+    const pdfBuffer = Buffer.from(pdf);
 
-    console.time("Title Page Generation");
+    await uploadToS3(pdfBuffer, `books/${bookId}/cover-${Date.now()}.pdf`);
+    return c.json({
+      status: 200,
+    });
+    // ========== PHASE 2: TITLE PAGE GENERATION ==========
+    // console.time("Phase 2: Title Page Generation");
+    // const title = book.title;
+    // const author = book.author_name || "";
+    // const titlePageHtml = buildTitlePage(author, title);
+    // const titlePdfBuffer = (await generatePdf(titlePageHtml)) as ArrayBuffer;
+    // const titlePageWithNumbers = await addPageNumbers(titlePdfBuffer, 1, true);
+    // const titlePagePdf = await addFooterLogo(titlePageWithNumbers);
+    // const titlePagePageCount = (await PDFDocument.load(titlePagePdf)).getPageCount();
+    // console.timeEnd("Phase 2: Title Page Generation");
 
-    const title = book.title;
-    const author = book.author_name || "";
-    const titlePageHtml = buildTitlePage(author, title);
-    console.time("Title Page PDF Generation");
-    const titlePdfBuffer = await generatePdf(titlePageHtml);
-    console.timeEnd("Title Page PDF Generation");
-    console.time("Adding Page Numbers to Title Page");
-    const titlePageWithNumbers = await addPageNumbers(titlePdfBuffer, 1, true);
-    console.timeEnd("Adding Page Numbers to Title Page");
-    console.time("Adding Footer Logo to Title Page");
-    const titlePagePdf = await addFooterLogo(titlePageWithNumbers);
-    console.timeEnd("Adding Footer Logo to Title Page");
-
-    await uploadToS3(
-      titlePagePdf,
-      `books/${bookId}/title-page-${Date.now()}.pdf`
-    );
-    console.timeEnd("Title Page Generation");
-    // ========== PHASE 2: DATA NORMALIZATION ==========
-    // console.time("Phase 2: Data Normalization");
-
+    // // ========== PHASE 3: DATA NORMALIZATION ==========
+    // console.time("Phase 3: Data Normalization");
     // const sectionsByQuestion = sections.reduce((acc, section) => {
-    //   if (!acc[section.question_id]) {
-    //     acc[section.question_id] = [];
+    //   const key = String(section.question_id);
+    //   if (!acc[key]) {
+    //     acc[key] = [];
     //   }
-    //   acc[section.question_id].push(section);
+    //   acc[key].push(section);
     //   return acc;
     // }, {} as Record<string, typeof sections>);
 
@@ -87,7 +102,7 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     //     (a, b) => Number(a.sequence) - Number(b.sequence)
     //   );
 
-    //   const question = questions.find((q) => q.id === questionId);
+    //   const question = questions.find((q) => String(q.id) === questionId);
     //   if (question) {
     //     const headingBlock = new (Heading as any)(
     //       question.id,
@@ -102,13 +117,16 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     //     case "heading":
     //       return { type: "heading", content: "text" in item ? item.text : "" };
 
-    //     case "image":
+    //     case "image": {
     //       const parsedContent =
     //         typeof item.content === "string"
     //           ? JSON.parse(item.content)
     //           : item.content;
     //       const imageUrl = parsedContent?.data?.file?.url;
-    //       const imageId = imageUrl.split("/").pop();
+    //       const imageId = imageUrl?.split("/").pop();
+    //       if (!imageId) {
+    //         throw new Error("Image reference missing url");
+    //       }
     //       const file = await File.findOne({ where: { id: imageId } });
     //       if (!file?.path) throw new Error(`File not found: ${imageId}`);
 
@@ -128,6 +146,7 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     //         content: item.content?.data?.file?.caption || "",
     //         imgUrl: `data:${mimeType};base64,${base64}`,
     //       };
+    //     }
 
     //     case "paragraph":
     //       return { type: "paragraph", content: item.content?.data?.text || "" };
@@ -139,26 +158,26 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
 
     // const normalizedChapters = await Promise.all(
     //   questions.map(async (question) => {
-    //     const sections = sectionsByQuestion[question.id] || [];
-    //     const blocks = await Promise.all(sections.map(normalizeBlock));
+    //     const questionSections = sectionsByQuestion[String(question.id)] || [];
+    //     const blocks = await Promise.all(questionSections.map(normalizeBlock));
     //     return { question, blocks };
     //   })
     // );
-    // console.timeEnd("Phase 2: Data Normalization");
+    // console.timeEnd("Phase 3: Data Normalization");
 
-    // // ========== PHASE 3: TOC PAGE CALCULATION ==========
-    // console.time("Phase 3: TOC Calculation");
+    // // ========== PHASE 4: TOC PAGE CALCULATION ==========
+    // console.time("Phase 4: TOC Calculation");
     // const chapterTitles = questions
     //   .map((q) => q.question)
     //   .filter((title): title is string => title !== undefined);
 
     // const dummyTocHtml = buildDummyToc(chapterTitles);
-    // const dummyTocBuffer = await generatePdf(dummyTocHtml);
+    // const dummyTocBuffer = (await generatePdf(dummyTocHtml)) as ArrayBuffer;
     // const tocPageCount = (
     //   await PDFDocument.load(dummyTocBuffer)
     // ).getPageCount();
 
-    // const reservedPages = 2;
+    // const reservedPages = titlePagePageCount;
     // const totalFrontPages = reservedPages + tocPageCount;
     // const needsBlankPage = totalFrontPages % 2 === 1;
     // let currentPage = needsBlankPage
@@ -168,14 +187,15 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     // console.log(
     //   `TOC pages: ${tocPageCount}, Needs blank: ${needsBlankPage}, Content starts: ${currentPage}`
     // );
-    // console.timeEnd("Phase 3: TOC Calculation");
-    // // ========== PHASE 4: CHAPTER GENERATION ==========
-    // console.time("Phase 4: Chapter Generation");
+    // console.timeEnd("Phase 4: TOC Calculation");
+
+    // // ========== PHASE 5: CHAPTER GENERATION ==========
+    // console.time("Phase 5: Chapter Generation");
     // console.time("Chapter PDFs Generation");
     // const chapterData = await Promise.all(
     //   normalizedChapters.map(async ({ question, blocks }) => {
     //     const chapterHtml = buildHtml(blocks, false);
-    //     const chapterPdf = await generatePdf(chapterHtml);
+    //     const chapterPdf = (await generatePdf(chapterHtml)) as ArrayBuffer;
     //     const pageCount = (await PDFDocument.load(chapterPdf)).getPageCount();
 
     //     return {
@@ -202,44 +222,47 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     //   })
     // );
     // console.timeEnd("Adding Page Numbers to Chapters");
-    // console.timeEnd("Phase 4: Chapter Generation");
+    // console.timeEnd("Phase 5: Chapter Generation");
 
-    // // ========== PHASE 5: TOC GENERATION ==========
-    // console.time("Phase 5: TOC Generation");
+    // // ========== PHASE 6: TOC GENERATION ==========
+    // console.time("Phase 6: TOC Generation");
     // const realTocHtml = buildRealToc(chapterPages, tocPageCount);
-    // const realTocBuffer = await generatePdf(realTocHtml);
-    // const realTocWithNumbers = await addPageNumbers(realTocBuffer, 3);
-    // console.timeEnd("Phase 5: TOC Generation");
+    // const realTocBuffer = (await generatePdf(realTocHtml)) as ArrayBuffer;
+    // const realTocWithNumbers = await addPageNumbers(
+    //   realTocBuffer,
+    //   titlePagePageCount + 1
+    // );
+    // console.timeEnd("Phase 6: TOC Generation");
 
-    // // ========== PHASE 6: PDF ASSEMBLY ==========
-    // console.time("Phase 6: PDF Assembly");
-    // const finalPdf = await mergePdfs([realTocWithNumbers, ...chapterPdfs]);
-    // console.timeEnd("Phase 6: PDF Assembly");
+    // // ========== PHASE 7: PDF ASSEMBLY ==========
+    // console.time("Phase 7: PDF Assembly");
+    // const finalPdf = await mergePdfs([titlePagePdf, realTocWithNumbers, ...chapterPdfs]);
+    // console.timeEnd("Phase 7: PDF Assembly");
 
-    // // ========== PHASE 7: WATERMARK GENERATION ==========
-    // console.time("Phase 7: Watermark Generation");
+    // // ========== PHASE 8: WATERMARK GENERATION ==========
+    // console.time("Phase 8: Watermark Generation");
     // const watermarkPdf = await addWatermark(finalPdf);
-    // console.timeEnd("Phase 7: Watermark Generation");
+    // console.timeEnd("Phase 8: Watermark Generation");
 
-    // // ========== PHASE 8: S3 UPLOAD ==========
-    // console.time("Phase 8: S3 Upload");
+    // // ========== PHASE 9: S3 UPLOAD ==========
+    // console.time("Phase 9: S3 Upload");
     // const s3KeyNormal = `books/${bookId}/${Date.now()}.pdf`;
     // const s3KeyWatermark = `books/${bookId}/${Date.now()}-watermark.pdf`;
 
     // const [pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
-    //   uploadToS3(finalPdf, s3KeyNormal),
-    //   uploadToS3(watermarkPdf, s3KeyWatermark),
+    //   uploadToS3(Buffer.from(finalPdf), s3KeyNormal),
+    //   uploadToS3(Buffer.from(watermarkPdf), s3KeyWatermark),
     // ]);
-    // console.timeEnd("Phase 8: S3 Upload");
+    // console.timeEnd("Phase 9: S3 Upload");
 
-    console.timeEnd("Total PDF Generation Time");
+    // console.timeEnd("Total PDF Generation Time");
 
-    return c.json({
-      success: true,
-      bookId,
-      chaptersCount: questions.length,
-      // pdfUrls: { normal: pdfUrlNormal, watermark: pdfUrlWatermark },
-    });
+    // return c.json({
+    //   success: true,
+    //   bookId,
+    //   chaptersCount: questions.length,
+    //   pdfUrls: { normal: pdfUrlNormal, watermark: pdfUrlWatermark },
+    // });
   } catch (error) {
     console.error("Error generating PDF:", error);
     return c.json({ error: "Failed to generate PDF" }, 500);

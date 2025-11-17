@@ -50,8 +50,8 @@ pdfRoutes.post("/generate-both-pdfs", async (c) => {
     const s3Key = Math.random().toString(36).substring(2, 15);
 
     const [previewUrl, finalUrl] = await Promise.all([
-      uploadToS3(previewPdf, `${s3Key}/preview-${timestamp}.pdf`),
-      uploadToS3(finalPdf, `${s3Key}/final-${timestamp}.pdf`),
+      uploadToS3(Buffer.from(previewPdf), `${s3Key}/preview-${timestamp}.pdf`),
+      uploadToS3(Buffer.from(finalPdf), `${s3Key}/final-${timestamp}.pdf`),
     ]);
 
     if (!previewUrl || !finalUrl) {
