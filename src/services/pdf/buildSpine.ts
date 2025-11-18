@@ -6,11 +6,12 @@ type SpineOptions = {
   textColor: string;
   authorName: string;
   spineWidth: number;
+  spineText: string;
   backgroundColor: string;
 };
 
 export function buildSpineContent(options: SpineOptions): string {
-  const { textColor, authorName } = options;
+  const { textColor, authorName, spineText } = options;
 
   let svgContent = readFileSync(narratoneLogo.narratoneLogoSvgPath, "utf-8");
   svgContent = svgContent
@@ -22,9 +23,14 @@ export function buildSpineContent(options: SpineOptions): string {
 
   const additionalLogoSrc = getUponLifeLogo(textColor);
 
+  let displaySpineText = spineText;
+  if (!spineText) {
+    displaySpineText = authorName;
+  }
+
   return `
     <div class="spine-content">
-      <div class="spine-author">${authorName}</div>
+      <div class="spine-text">${displaySpineText}</div>
       <div class="spine-logos-wrapper">
         <div class="spine-logo">${svgContent}</div>
         <img class="spine-additional-logo" src="${additionalLogoSrc}" alt="Logo" />
@@ -58,7 +64,7 @@ export function getSpineStyles(options: SpineOptions): string {
       height: 100%;
     }
 
-    .spine-author {
+    .spine-text {
       font-family: Arial, sans-serif; 
       font-size: 11pt;
       letter-spacing: 1px;

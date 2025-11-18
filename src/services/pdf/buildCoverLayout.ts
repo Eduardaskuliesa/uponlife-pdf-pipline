@@ -8,6 +8,7 @@ type CoverLayoutOptions = {
   backgroundColor?: string;
   textColor?: string;
   authorName?: string;
+  spineText?: string;
   bookTitle?: string;
   templateId?: number;
   backgroundImageUrl?: string;
@@ -33,12 +34,14 @@ export function buildCoverLayout(
     backgroundImageUrl = "",
     authorName = "",
     bookTitle = "",
+    spineText = "",
     templateId = 1,
   } = options;
 
   const spineContent = buildSpineContent({
     textColor,
     authorName,
+    spineText,
     spineWidth: spineWidht,
     backgroundColor,
   });
@@ -46,6 +49,7 @@ export function buildCoverLayout(
   const spineStyles = getSpineStyles({
     textColor,
     authorName,
+    spineText,
     spineWidth: spineWidht,
     backgroundColor,
   });

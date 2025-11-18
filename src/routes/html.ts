@@ -263,6 +263,7 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     const coverHtml = buildCoverLayout(spineWidth, {
       backgroundColor: book.background_color,
       textColor: book.text_color,
+      spineText: book.spine || "",
       bookTitle: book.title,
       backgroundImageUrl: bookCoverImageUrl,
       authorName: book.author_name || "",
