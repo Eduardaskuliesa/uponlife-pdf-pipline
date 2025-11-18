@@ -10,10 +10,13 @@ type CoverLayoutOptions = {
   authorName?: string;
   bookTitle?: string;
   templateId?: number;
+  backgroundImageUrl?: string;
 };
 
 const fontArialPath = path.resolve(process.cwd(), "src/fonts/arial.ttf");
-const fontArialBase64 = `data:font/ttf;base64,${readFileSync(fontArialPath).toString("base64")}`;
+const fontArialBase64 = `data:font/ttf;base64,${readFileSync(
+  fontArialPath
+).toString("base64")}`;
 
 export function buildCoverLayout(
   spineWidht: number,
@@ -27,6 +30,7 @@ export function buildCoverLayout(
   const {
     backgroundColor = "",
     textColor = "",
+    backgroundImageUrl = "",
     authorName = "",
     bookTitle = "",
     templateId = 1,
@@ -49,11 +53,15 @@ export function buildCoverLayout(
   const leftPanelContent = buildLeftCover({ textColor });
   const leftPanelStyles = getLeftCoverStyles(textColor);
 
-  const { content: rightContent, styles: rightStyles } = getCoverTemplate(templateId, {
-    textColor,
-    authorName,
-    bookTitle,
-  });
+  const { content: rightContent, styles: rightStyles } = getCoverTemplate(
+    templateId,
+    {
+      textColor,
+      authorName,
+      bookTitle,
+      bookCoverImageUrl: backgroundImageUrl,
+    }
+  );
 
   return `
     <!DOCTYPE html>
@@ -105,6 +113,7 @@ export function buildCoverLayout(
             height: ${coverHeight}mm;
             display: flex;
             box-sizing: border-box;
+            overflow: hidden;
             background: ${backgroundColor};
           }
 
@@ -117,6 +126,7 @@ export function buildCoverLayout(
 
           .cover-panel.side {
             width: 173mm;
+            overflow: hidden;
             box-sizing: border-box;
           }
 

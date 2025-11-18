@@ -3,7 +3,6 @@ import { getUponLifeLogo } from "../../../helpers/getUponlifeLogo";
 import { readFileSync } from "fs";
 import { CoverTemplateOptions } from "../../../types/template";
 
-
 const fontBoldPath = path.resolve(
   process.cwd(),
   "src/fonts/cormorant/Cormorant-SemiBold.ttf"
@@ -14,7 +13,7 @@ const fontBoldBase64 = `data:font/ttf;base64,${readFileSync(
 ).toString("base64")}`;
 
 export function buildCoverTemplate2(options: CoverTemplateOptions): string {
-  const { textColor, bookTitle, authorName } = options;
+  const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   const authorNameText = authorName.slice(0, 25).replace(" ", "\n");
   const bookTitleText = bookTitle.slice(0, 40);
@@ -25,7 +24,7 @@ export function buildCoverTemplate2(options: CoverTemplateOptions): string {
     <div class="book-cover-2-wrapper">
       <div class="top-2">
         <div class="image-wrapper-2">
-          <div class="image-2"></div>
+        <img class="image-2" src="${bookCoverImageUrl}" alt="Book Cover" />
           <div class="book-title-2">${bookTitleText}</div>
         </div>
         <img class="logo-top-2" src="${logoSrc}" alt="Logo" />
@@ -75,7 +74,6 @@ export function getCoverTemplate2Styles(textColor: string): string {
       height: 87mm;
       object-fit: cover;
       margin-bottom: 4mm;
-      background: #cccccc;
     }
 
     .book-title-2 {

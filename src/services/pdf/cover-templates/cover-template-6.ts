@@ -1,7 +1,7 @@
 import { CoverTemplateOptions } from "../../../types/template";
 
 export function buildCoverTemplate6(options: CoverTemplateOptions): string {
-  const { textColor, bookTitle, authorName } = options;
+  const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   const titleText = bookTitle.slice(0, 40).toUpperCase();
   const authorNameText = `WRITTEN BY:<br>${authorName
@@ -10,7 +10,7 @@ export function buildCoverTemplate6(options: CoverTemplateOptions): string {
 
   return `
     <div class="book-cover-6-wrapper">
-      <div class="book-cover-image-6"></div>
+      <img class="book-cover-image-6" src="${bookCoverImageUrl}" alt="Book Cover" />
       <div class="top-left-text-6">${titleText}</div>
       <div class="bottom-right-text-6">${authorNameText}</div>
     </div>
@@ -31,7 +31,6 @@ export function getCoverTemplate6Styles(textColor: string): string {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      background: #cccccc;
     }
 
     .top-left-text-6 {

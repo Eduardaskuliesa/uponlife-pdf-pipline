@@ -3,7 +3,7 @@ import { getLongestWord } from "../utils/getLongestWord";
 import { CoverTemplateOptions } from "../../../types/template";
 
 export function buildCoverTemplate3(options: CoverTemplateOptions): string {
-  const { textColor, bookTitle, authorName } = options;
+  const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   const titleText = bookTitle.slice(0, 40).toUpperCase();
   const longestWord = getLongestWord(titleText);
@@ -21,7 +21,7 @@ export function buildCoverTemplate3(options: CoverTemplateOptions): string {
     <div class="book-cover-3-wrapper">
       <div class="top-3">
         <div class="text-3" style="font-size: ${fontSize}pt;">${titleText}</div>
-        <div class="image-3"></div>
+        <img class="image-3" src="${bookCoverImageUrl}" alt="Book Cover" />
       </div>
       <div class="author-text-3">Written by:<br>${authorName.slice(0, 25)}</div>
     </div>
@@ -63,7 +63,6 @@ export function getCoverTemplate3Styles(textColor: string): string {
       width: 70mm;
       height: 87mm;
       object-fit: cover;
-      background: #cccccc;
     }
 
     .author-text-3 {

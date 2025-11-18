@@ -1,8 +1,7 @@
 import { CoverTemplateOptions } from "../../../types/template";
 
-
 export function buildCoverTemplate5(options: CoverTemplateOptions): string {
-  const { textColor, bookTitle, authorName } = options;
+  const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   return `
     <div class="side-2-wrapper">
@@ -14,7 +13,7 @@ export function buildCoverTemplate5(options: CoverTemplateOptions): string {
           <div class="author-name-right">Written by:<br>${authorName}</div>
         </div>
       </div>
-      <div class="book-cover-image"></div>
+     <img class="book-cover-image-5" src="${bookCoverImageUrl}" alt="Book Cover" />
     </div>
   `;
 }
@@ -77,10 +76,10 @@ export function getCoverTemplate5Styles(textColor: string): string {
       line-height: 1.2;
     }
 
-    .book-cover-image {
+    .book-cover-image-5 {
       width: 134mm;
       height: 192mm;
-      background: #cccccc;
+      object-fit: cover;
     }
   `;
 }

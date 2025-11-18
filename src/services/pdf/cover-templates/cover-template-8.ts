@@ -2,7 +2,6 @@ import { readFileSync } from "fs";
 import path from "path";
 import { CoverTemplateOptions } from "../../../types/template";
 
-
 const fontBoldPath = path.resolve(
   process.cwd(),
   "src/fonts/cormorant/Cormorant-SemiBold.ttf"
@@ -13,7 +12,7 @@ const fontBoldBase64 = `data:font/ttf;base64,${readFileSync(
 ).toString("base64")}`;
 
 export function buildCoverTemplate8(options: CoverTemplateOptions): string {
-  const { textColor, bookTitle, authorName } = options;
+  const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   const bookTitleText = bookTitle.slice(0, 40);
   const authorNameText = `WRITTEN BY:<br>${authorName
@@ -24,7 +23,7 @@ export function buildCoverTemplate8(options: CoverTemplateOptions): string {
     <div class="book-cover-8-wrapper">
       <div class="book-cover-8-top-left-text">${bookTitleText}</div>
       <div class="bottom-text-right-8">${authorNameText}</div>
-      <div class="book-cover-image-8"></div>
+      <img class="book-cover-image-8" src="${bookCoverImageUrl}" alt="Book Cover" />
     </div>
   `;
 }
@@ -73,7 +72,6 @@ export function getCoverTemplate8Styles(textColor: string): string {
     .book-cover-image-8 {
       width: 100%;
       object-fit: cover;
-      background: #cccccc;
       flex: 1;
     }
   `;

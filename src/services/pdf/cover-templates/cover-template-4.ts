@@ -23,7 +23,7 @@ function capitalizeString(str: string) {
 }
 
 export function buildCoverTemplate4(options: CoverTemplateOptions): string {
-  const { textColor, bookTitle, authorName } = options;
+  const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   const authorNameText = authorName.slice(0, 25);
   const titleText = capitalizeString(bookTitle.slice(0, 40));
@@ -47,7 +47,7 @@ export function buildCoverTemplate4(options: CoverTemplateOptions): string {
         <div class="book-cover-4-bottom-left">
           <div class="text-4" style="font-size: ${fontSize}pt;">${titleText}</div>
         </div>
-        <div class="book-cover-image-4"></div>
+        <img class="book-cover-image-4" src="${bookCoverImageUrl}" alt="Book Cover" />
       </div>
     </div>
   `;
@@ -121,7 +121,6 @@ export function getCoverTemplate4Styles(textColor: string): string {
       width: 82%;
       height: 100%;
       object-fit: cover;
-      background: #cccccc;
     }
   `;
 }

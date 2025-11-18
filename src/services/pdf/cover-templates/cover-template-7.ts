@@ -5,7 +5,7 @@ import { getLongestWord } from "../utils/getLongestWord";
 
 
 export function buildCoverTemplate7(options: CoverTemplateOptions): string {
-  const { textColor, bookTitle, authorName } = options;
+  const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   const authorNameText = `WRITTEN BY:<br>${authorName
     .slice(0, 25)
@@ -29,7 +29,7 @@ export function buildCoverTemplate7(options: CoverTemplateOptions): string {
     <div class="book-cover-7-wrapper">
       <div class="text-7">${bookTitleText}</div>
       <div class="bottom-7">
-        <div class="image-7"></div>
+        <img class="image-7" src="${bookCoverImageUrl}" alt="Book Cover" />
         <div class="author-text-7" style="font-size: ${fontSize}pt;">${authorNameText}</div>
       </div>
     </div>
@@ -72,7 +72,6 @@ export function getCoverTemplate7Styles(textColor: string): string {
       width: 70mm;
       height: 87mm;
       object-fit: cover;
-      background: #cccccc;
     }
 
     .author-text-7 {

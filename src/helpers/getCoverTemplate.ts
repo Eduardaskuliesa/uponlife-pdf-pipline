@@ -31,12 +31,7 @@ import {
   buildCoverTemplate8,
   getCoverTemplate8Styles,
 } from "../services/pdf/cover-templates/cover-template-8";
-
-type TemplateOptions = {
-  textColor: string;
-  authorName: string;
-  bookTitle: string;
-};
+import { CoverTemplateOptions } from "../types/template";
 
 type TemplateResult = {
   content: string;
@@ -45,7 +40,7 @@ type TemplateResult = {
 
 export function getCoverTemplate(
   templateId: number,
-  options: TemplateOptions
+  options: CoverTemplateOptions
 ): TemplateResult {
   switch (templateId) {
     case 1:

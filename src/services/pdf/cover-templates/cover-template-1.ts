@@ -3,16 +3,17 @@ import pixelWidth from "string-pixel-width";
 import { getUponLifeLogo } from "../../../helpers/getUponlifeLogo";
 import { CoverTemplateOptions } from "../../../types/template";
 
-
 export function buildCoverTemplate1(options: CoverTemplateOptions): string {
-  const { textColor, bookTitle, authorName } = options;
+  const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   const titleText = bookTitle.toUpperCase().slice(0, 40);
   const titleTextWidth = pixelWidth(titleText, { font: "arial", size: 14 });
 
-
   const authorNameText = authorName.slice(0, 25);
-  const authorNameTextWidth = pixelWidth(authorNameText, { font: "arial", size: 11 });
+  const authorNameTextWidth = pixelWidth(authorNameText, {
+    font: "arial",
+    size: 11,
+  });
 
   let titleOffset = 12;
   if (titleTextWidth > 370 && titleTextWidth <= 740) {
@@ -37,7 +38,8 @@ export function buildCoverTemplate1(options: CoverTemplateOptions): string {
       </div>
       <img class="template-1-logo" src="${logoSrc}" alt="Logo" />
     </div>
-    <div class="book-cover-image"></div>
+   <img class="book-cover-image" src="${bookCoverImageUrl}" alt="Book Cover" />
+
   `;
 }
 
@@ -47,7 +49,6 @@ export function getCoverTemplate1Styles(textColor: string): string {
       width: 18%;
       height: 100%;
       display: flex;
-      background: black;
       box-sizing: border-box;
       flex-direction: column;
       justify-content: space-between;
@@ -92,7 +93,6 @@ export function getCoverTemplate1Styles(textColor: string): string {
     .book-cover-image {
       width: 82%;
       height: 100%;
-      background: #cccccc;
       object-fit: cover;
     }
   `;
