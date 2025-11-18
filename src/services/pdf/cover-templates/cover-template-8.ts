@@ -15,9 +15,7 @@ export function buildCoverTemplate8(options: CoverTemplateOptions): string {
   const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
 
   const bookTitleText = bookTitle.slice(0, 40);
-  const authorNameText = `WRITTEN BY:<br>${authorName
-    .slice(0, 25)
-    .toUpperCase()}`;
+  const authorNameText = `Written by:<br>${authorName.slice(0, 25)}`;
 
   return `
     <div class="book-cover-8-wrapper">
@@ -44,6 +42,7 @@ export function getCoverTemplate8Styles(textColor: string): string {
       flex-direction: column;
       padding-top: 36mm;
       padding-right: 17mm;
+      
     }
 
     .book-cover-8-top-left-text {
@@ -53,8 +52,8 @@ export function getCoverTemplate8Styles(textColor: string): string {
       color: ${textColor};
       line-height: 1;
       text-transform: capitalize;
-      margin-bottom: 8mm;
-      padding-left: 14mm;
+      margin-bottom: 12mm;
+      padding-left: 5mm;
       margin-right: 10mm;
     }
 
@@ -62,9 +61,9 @@ export function getCoverTemplate8Styles(textColor: string): string {
       font-family: 'Arial';
       font-size: 13pt;
       color: ${textColor};
-      margin-bottom: 4mm;
+      margin-bottom: 12mm;
       align-self: flex-end;
-      margin-right: 10mm;
+      margin-right: 24mm;
       letter-spacing: 0.3mm;
       line-height: 1.2;
     }

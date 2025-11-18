@@ -33,13 +33,12 @@ export function buildCoverTemplate1(options: CoverTemplateOptions): string {
   return `
     <div class="template-1-left">
       <div class="template-1-text-wrapper">
-        <div class="book-title-vertical" padding-left: ${titleOffset}px;">${titleText}</div>
+        <div class="book-title-vertical" style="padding-left: ${titleOffset}px;">${titleText}</div>
         <div class="author-name-vertical" style="padding-left: ${authorOffset}px;">${authorNameText}</div>
       </div>
       <img class="template-1-logo" src="${logoSrc}" alt="Logo" />
     </div>
-   <img class="book-cover-image" src="${bookCoverImageUrl}" alt="Book Cover" />
-
+    <img class="book-cover-image" src="${bookCoverImageUrl}" alt="Book Cover" />
   `;
 }
 
@@ -90,10 +89,11 @@ export function getCoverTemplate1Styles(textColor: string): string {
       height: 10mm;
     }
 
-    .book-cover-image {
-      width: 82%;
-      height: 100%;
-      object-fit: cover;
-    }
+   .book-cover-image {
+  width: 82%;
+  height: 100%;
+  object-fit: cover;
+  display: block; 
+}
   `;
 }

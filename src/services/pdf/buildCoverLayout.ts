@@ -98,6 +98,11 @@ export function buildCoverLayout(
             padding-bottom: 33mm;
             padding-top: 21mm;
           }
+          
+          .side-2 {
+            display: flex;
+            overflow: hidden;
+          }
 
           .cover-container {
             width: ${stageWidth}mm;

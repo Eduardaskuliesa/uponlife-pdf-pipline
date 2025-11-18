@@ -101,7 +101,7 @@ export async function addPageNumbers(
 
     page.drawText(text, {
       x: width / 2 - textWidth / 2,
-      y: 58,
+      y: 38,
       size: 12,
       font,
     });
@@ -163,7 +163,7 @@ export async function addWatermark(
     const offset = (watermarkSize * Math.sqrt(2)) / 2;
 
     page.drawImage(logoImage, {
-      x: width / 2 - offset,
+      x: width / 2 - offset + 20,
       y: height / 2,
       width: watermarkSize,
       height: watermarkSize,

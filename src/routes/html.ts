@@ -4,12 +4,13 @@ import { Question } from "../entities/questions.entity";
 import { Section } from "../entities/section.entity";
 import { In } from "typeorm";
 import {
+  buildBlankPage,
   buildDummyToc,
   buildHtml,
   buildRealToc,
   buildTitlePage,
 } from "../lib/html";
-import { s3Client, uploadToS3 } from "../services/s3";
+import { uploadToS3 } from "../services/s3";
 import { File } from "../entities/file.entity";
 import { supabase } from "../services/supabase-client";
 import { Heading } from "../lib/create-heading-block";
@@ -26,6 +27,22 @@ import { buildCoverLayout } from "../services/pdf/buildCoverLayout";
 import { defaultCoverImg } from "../helpers/getDefaultCoverImg";
 
 export const htmlRoutes = new Hono();
+
+async function getBookCoverImage(imgId: string | null): Promise<string> {
+  if (!imgId) return defaultCoverImg;
+
+  const file = await File.findOne({ where: { id: imgId } });
+  if (!file?.path) return defaultCoverImg;
+
+  const { data } = await supabase.storage.from("files").download(file.path);
+  if (!data) return defaultCoverImg;
+
+  const arrayBuffer = await data.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+  const mimeType = file.path.endsWith(".png") ? "image/png" : "image/jpeg";
+
+  return `data:${mimeType};base64,${base64}`;
+}
 
 htmlRoutes.post("/generate-html/:bookId", async (c) => {
   console.time("Total PDF Generation Time");
@@ -52,53 +69,10 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
       where: { question_id: In(questions.map((q) => q.id)) },
     });
     console.timeEnd("Phase 1: Data Fetching");
-    const totalPageCount = 97;
-    let spineWidht = Math.max(10, 0.1025 * totalPageCount);
-    console.log(`Initial spine width calculation: ${spineWidht}mm`);
-    if (spineWidht < 10) {
-      spineWidht = 10;
-    }
-    const backgroundColor = book.background_color;
-    const textColor = book.text_color;
-    const bookTitle = book.title;
-    const imgId = book.cover_image_id;
-    let imgUrl = "";
-    if (imgId) {
-      const file = await File.findOne({ where: { id: imgId } });
-      if (!file?.path) throw new Error(`File not found: ${imgId}`);
-      const { data } = await supabase.storage.from("files").download(file.path);
-      if (!data) throw new Error("Failed to download image");
-
-      const arrayBuffer = await data.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      const mimeType = file.path.endsWith(".png") ? "image/png" : "image/jpeg";
-
-      imgUrl = `data:${mimeType};base64,${base64}`;
-    }
-    if (!imgUrl) {
-      imgUrl = defaultCoverImg;
-    }
-    console.log(textColor, backgroundColor);
-    const authorName = book.author_name || "";
-    const templateID = 2;
-    const html = buildCoverLayout(spineWidht, {
-      backgroundColor,
-      textColor,
-      bookTitle,
-      backgroundImageUrl: imgUrl,
-      authorName,
-      templateId: templateID,
-    });
-    const pdf = await generatePdf(html);
-    const pdfBuffer = Buffer.from(pdf);
-
-    await uploadToS3(pdfBuffer, `books/${bookId}/cover-${Date.now()}.pdf`);
 
     // ========== PHASE 2: TITLE PAGE GENERATION ==========
     console.time("Phase 2: Title Page Generation");
-    const title = book.title;
-    const author = book.author_name || "";
-    const titlePageHtml = buildTitlePage(author, title);
+    const titlePageHtml = buildTitlePage(book.author_name || "", book.title);
     const titlePdfBuffer = (await generatePdf(titlePageHtml)) as ArrayBuffer;
     const titlePageWithNumbers = await addPageNumbers(titlePdfBuffer, 1, true);
     const titlePagePdf = await addFooterLogo(titlePageWithNumbers);
@@ -111,9 +85,7 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     console.time("Phase 3: Data Normalization");
     const sectionsByQuestion = sections.reduce((acc, section) => {
       const key = String(section.question_id);
-      if (!acc[key]) {
-        acc[key] = [];
-      }
+      if (!acc[key]) acc[key] = [];
       acc[key].push(section);
       return acc;
     }, {} as Record<string, typeof sections>);
@@ -145,9 +117,8 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
               : item.content;
           const imageUrl = parsedContent?.data?.file?.url;
           const imageId = imageUrl?.split("/").pop();
-          if (!imageId) {
-            throw new Error("Image reference missing url");
-          }
+          if (!imageId) throw new Error("Image reference missing url");
+
           const file = await File.findOne({ where: { id: imageId } });
           if (!file?.path) throw new Error(`File not found: ${imageId}`);
 
@@ -198,21 +169,19 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
       await PDFDocument.load(dummyTocBuffer)
     ).getPageCount();
 
-    const reservedPages = titlePagePageCount;
-    const totalFrontPages = reservedPages + tocPageCount;
-    const needsBlankPage = totalFrontPages % 2 === 1;
-    let currentPage = needsBlankPage
+    const totalFrontPages = titlePagePageCount + tocPageCount;
+    const needsBlankPageAfterToc = totalFrontPages % 2 === 1;
+    let currentPage = needsBlankPageAfterToc
       ? totalFrontPages + 2
       : totalFrontPages + 1;
 
     console.log(
-      `TOC pages: ${tocPageCount}, Needs blank: ${needsBlankPage}, Content starts: ${currentPage}`
+      `TOC pages: ${tocPageCount}, Front pages: ${totalFrontPages}, Content starts: ${currentPage}`
     );
     console.timeEnd("Phase 4: TOC Calculation");
 
     // ========== PHASE 5: CHAPTER GENERATION ==========
     console.time("Phase 5: Chapter Generation");
-    console.time("Chapter PDFs Generation");
     const chapterData = await Promise.all(
       normalizedChapters.map(async ({ question, blocks }) => {
         const chapterHtml = buildHtml(blocks, false);
@@ -226,9 +195,7 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
         };
       })
     );
-    console.timeEnd("Chapter PDFs Generation");
 
-    console.time("Adding Page Numbers to Chapters");
     let page = currentPage;
     const chapterPages: Array<{ title: string; page: number }> = [];
     const chapterPdfs = await Promise.all(
@@ -242,7 +209,16 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
         return await addPageNumbers(chapter.pdf, currentPageForChapter);
       })
     );
-    console.timeEnd("Adding Page Numbers to Chapters");
+
+    const totalPagesBeforeBlank = page - 1;
+    const needsBlankPageAtEnd = totalPagesBeforeBlank % 2 === 1;
+    const totalPages = needsBlankPageAtEnd
+      ? totalPagesBeforeBlank + 1
+      : totalPagesBeforeBlank;
+
+    console.log(
+      `Total pages before blank: ${totalPagesBeforeBlank}, Needs blank at end: ${needsBlankPageAtEnd}, Final total: ${totalPages}`
+    );
     console.timeEnd("Phase 5: Chapter Generation");
 
     // ========== PHASE 6: TOC GENERATION ==========
@@ -255,38 +231,79 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     );
     console.timeEnd("Phase 6: TOC Generation");
 
-    // ========== PHASE 7: PDF ASSEMBLY ==========
-    console.time("Phase 7: PDF Assembly");
-    const finalPdf = await mergePdfs([
-      titlePagePdf,
-      realTocWithNumbers,
-      ...chapterPdfs,
-    ]);
-    console.timeEnd("Phase 7: PDF Assembly");
+    // ========== PHASE 7: BLANK PAGE AT END ==========
+    console.time("Phase 7: Blank Page Generation");
+    let blankPagePdf: ArrayBuffer | null = null;
 
-    // ========== PHASE 8: WATERMARK GENERATION ==========
-    console.time("Phase 8: Watermark Generation");
+    if (needsBlankPageAtEnd) {
+      const blankHtml = buildBlankPage();
+      const blankPdf = (await generatePdf(blankHtml)) as ArrayBuffer;
+      blankPagePdf = await addPageNumbers(blankPdf, totalPages);
+    }
+    console.timeEnd("Phase 7: Blank Page Generation");
+
+    // ========== PHASE 8: PDF ASSEMBLY ==========
+    console.time("Phase 8: PDF Assembly");
+    const pdfParts = [titlePagePdf, realTocWithNumbers, ...chapterPdfs];
+
+    if (blankPagePdf) {
+      pdfParts.push(blankPagePdf);
+    }
+
+    const finalPdf = await mergePdfs(pdfParts);
+    console.timeEnd("Phase 8: PDF Assembly");
+
+    // ========== PHASE 9: COVER GENERATION ==========
+    console.time("Phase 9: Cover Generation");
+    const spineWidth = Math.max(10, 0.1025 * totalPages);
+    console.log(`Final spine width: ${spineWidth}mm for ${totalPages} pages`);
+
+    const bookCoverImageUrl = await getBookCoverImage(book.cover_image_id);
+    console.log(`Book cover style: ${book.cover_style}`);
+    const coverHtml = buildCoverLayout(spineWidth, {
+      backgroundColor: book.background_color,
+      textColor: book.text_color,
+      bookTitle: book.title,
+      backgroundImageUrl: bookCoverImageUrl,
+      authorName: book.author_name || "",
+      templateId: book.cover_style,
+    });
+
+    const coverPdf = await generatePdf(coverHtml);
+    const coverPdfBuffer = Buffer.from(coverPdf);
+    console.timeEnd("Phase 9: Cover Generation");
+
+    // ========== PHASE 10: WATERMARK GENERATION ==========
+    console.time("Phase 10: Watermark Generation");
     const watermarkPdf = await addWatermark(finalPdf);
-    console.timeEnd("Phase 8: Watermark Generation");
+    console.timeEnd("Phase 10: Watermark Generation");
 
-    // ========== PHASE 9: S3 UPLOAD ==========
-    console.time("Phase 9: S3 Upload");
-    const s3KeyNormal = `books/${bookId}/${Date.now()}.pdf`;
-    const s3KeyWatermark = `books/${bookId}/${Date.now()}-watermark.pdf`;
-
-    const [pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
-      uploadToS3(Buffer.from(finalPdf), s3KeyNormal),
-      uploadToS3(Buffer.from(watermarkPdf), s3KeyWatermark),
+    // ========== PHASE 11: S3 UPLOAD ==========
+    console.time("Phase 11: S3 Upload");
+    const timestamp = Date.now();
+    const [coverUrl, pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
+      uploadToS3(coverPdfBuffer, `books/${bookId}/cover-${timestamp}.pdf`),
+      uploadToS3(Buffer.from(finalPdf), `books/${bookId}/${timestamp}.pdf`),
+      uploadToS3(
+        Buffer.from(watermarkPdf),
+        `books/${bookId}/${timestamp}-watermark.pdf`
+      ),
     ]);
-    console.timeEnd("Phase 9: S3 Upload");
+    console.timeEnd("Phase 11: S3 Upload");
 
     console.timeEnd("Total PDF Generation Time");
 
     return c.json({
       success: true,
       bookId,
+      totalPages,
       chaptersCount: questions.length,
-      pdfUrls: { normal: pdfUrlNormal, watermark: pdfUrlWatermark },
+      spineWidth,
+      pdfUrls: {
+        cover: coverUrl,
+        normal: pdfUrlNormal,
+        watermark: pdfUrlWatermark,
+      },
     });
   } catch (error) {
     console.error("Error generating PDF:", error);

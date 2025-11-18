@@ -34,10 +34,7 @@ const fontBoldItalicPath = path.resolve(
   "src/fonts/cormorant/Cormorant-SemiBoldItalic.ttf"
 );
 
-const fontArialPath = path.resolve(
-  process.cwd(),
-  "src/fonts/arial.ttf"
-)
+const fontArialPath = path.resolve(process.cwd(), "src/fonts/arial.ttf");
 
 const narrtoneLogoBase64 = `data:image/svg+xml;base64,${readFileSync(
   narrtoneLogoPath
@@ -116,7 +113,7 @@ export function buildHtml(
         <style>
           @page {
             size: 152mm 228mm;
-            margin: 18mm 14mm 42mm 14mm;
+            margin: 18mm 14mm 24mm 14mm;
           }
           @font-face {
             font-family: 'Cormorant';
@@ -161,12 +158,12 @@ export function buildHtml(
           
           .chapter-heading {
             font-family: 'Cormorant', serif;
-            font-size: 28pt;
+            font-size: 22pt;
             font-weight: normal;
             text-align: center;
-            line-height: 1;
+            line-height: 1.4;
             text-transform: uppercase;
-            margin-bottom: 4mm;
+            margin-bottom: 3mm;
           }
           
           .header-curve {
@@ -198,23 +195,25 @@ export function buildHtml(
           }
           
           .image-figure {
-            margin: 2mm 5mm;
+            margin: 2mm;
             text-align: center;
             page-break-inside: avoid;
           }
           
           .block-image {
-            max-width: 100%;
+            max-width: 80%;
             height: auto;
-            margin: 0;
+            margin: 0 auto;
             object-fit: contain;
           }
           
           .image-caption {
             font-family: 'Arial', serif;
             font-size: 10pt;
-            padding: 8pt 0 0;
+            margin-top: 2mm;
+            padding-left: 12mm;
             color: #333;
+            align-self: stretch;
             text-align: left;
           }
           ${
@@ -265,7 +264,7 @@ export const buildDummyToc = (chapterTitles: string[]) => {
          <style>
           @page {
             size: 152mm 228mm;
-            margin: 14mm 14mm 42mm 14mm;
+            margin: 14mm 14mm 28mm 14mm;
           }
           @font-face {
             font-family: 'Cormorant';
@@ -294,7 +293,7 @@ export const buildDummyToc = (chapterTitles: string[]) => {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 3mm;
+            margin-bottom: 4mm;
             line-height: 1.2;
           }
 
@@ -347,7 +346,7 @@ export function buildRealToc(
         <style>
           @page {
             size: 152mm 228mm;
-            margin: 14mm 14mm 42mm 14mm;
+            margin: 14mm 14mm 28mm 14mm;
           }
           @font-face {
             font-family: 'Cormorant';
@@ -376,7 +375,7 @@ export function buildRealToc(
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 3mm;
+            margin-bottom: 4mm;
             line-height: 1.2;
           }
 
@@ -477,6 +476,28 @@ export function buildTitlePage(author: string, title?: string): string {
           ${title ? `<div class="title">${title}</div>` : ""}
         </div>
       </body>
+    </html>
+  `;
+}
+
+export function buildBlankPage(): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          @page { 
+            size: 152mm 228mm;
+            margin: 14mm 14mm 42mm 14mm;
+          }
+          body { 
+            margin: 0; 
+            padding: 0; 
+          }
+        </style>
+      </head>
+      <body></body>
     </html>
   `;
 }

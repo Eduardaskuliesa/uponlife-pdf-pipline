@@ -50,6 +50,7 @@ export function getCoverTemplate5Styles(textColor: string): string {
       font-family: 'Arial';
       font-size: 14pt;
       font-weight: 500;
+      width: 55mm;
       color: ${textColor};
       padding-right: 3mm;
       padding-top: 38mm;
