@@ -1,12 +1,19 @@
-import { buildSpineContent, getSpineStyles } from "../helpers/buildSpine";
-import { getLeftCoverStyles, buildLeftCover } from "../helpers/buildLeftCover";
+import path from "path";
+import { readFileSync } from "fs";
+import { buildSpineContent, getSpineStyles } from "./buildSpine";
+import { buildLeftCover, getLeftCoverStyles } from "./buildLeftCover";
+import { getCoverTemplate } from "../../helpers/getCoverTemplate";
 
 type CoverLayoutOptions = {
   backgroundColor?: string;
   textColor?: string;
   authorName?: string;
-  logoText?: string;
+  bookTitle?: string;
+  templateId?: number;
 };
+
+const fontArialPath = path.resolve(process.cwd(), "src/fonts/arial.ttf");
+const fontArialBase64 = `data:font/ttf;base64,${readFileSync(fontArialPath).toString("base64")}`;
 
 export function buildCoverLayout(
   spineWidht: number,
@@ -18,9 +25,11 @@ export function buildCoverLayout(
   const stageHeight = 320;
 
   const {
-    backgroundColor = "#f4d35e",
-    textColor = "#1b1b1b",
+    backgroundColor = "",
+    textColor = "",
     authorName = "",
+    bookTitle = "",
+    templateId = 1,
   } = options;
 
   const spineContent = buildSpineContent({
@@ -40,6 +49,12 @@ export function buildCoverLayout(
   const leftPanelContent = buildLeftCover({ textColor });
   const leftPanelStyles = getLeftCoverStyles(textColor);
 
+  const { content: rightContent, styles: rightStyles } = getCoverTemplate(templateId, {
+    textColor,
+    authorName,
+    bookTitle,
+  });
+
   return `
     <!DOCTYPE html>
     <html>
@@ -50,6 +65,13 @@ export function buildCoverLayout(
             size: ${stageWidth}mm ${stageHeight}mm;
             margin: 0;
           }
+          
+          @font-face {
+            font-family: 'Arial';
+            src: url('${fontArialBase64}');
+            font-weight: normal;
+            font-style: normal;
+          }
 
           body {
             margin: 0;
@@ -58,8 +80,15 @@ export function buildCoverLayout(
             width: 100vw;
             height: 100vh;
             display: flex;
+            letter-spacing: normal;
             justify-content: center;
             align-items: center;
+          } 
+
+          .side-1 {
+            background: ${backgroundColor};
+            padding-bottom: 33mm;
+            padding-top: 21mm;
           }
 
           .cover-container {
@@ -75,9 +104,8 @@ export function buildCoverLayout(
             width: ${coverFlatWidth}mm;
             height: ${coverHeight}mm;
             display: flex;
-            padding: 20mm;
             box-sizing: border-box;
-            background: #0066cc;
+            background: ${backgroundColor};
           }
 
           .cover-panel {
@@ -85,9 +113,6 @@ export function buildCoverLayout(
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: Arial, sans-serif;
-            font-size: 14pt;
-            letter-spacing: 1px;
           }
 
           .cover-panel.side {
@@ -97,16 +122,7 @@ export function buildCoverLayout(
 
           ${spineStyles}
           ${leftPanelStyles}
-
-          .side-1 {
-            background: #d62828;
-            padding-right: 8mm;
-          }
-
-          .side-2 {
-            padding-left: 8mm;
-            background: #2a9d8f;
-          }
+          ${rightStyles}
         </style>
       </head>
       <body>
@@ -114,7 +130,7 @@ export function buildCoverLayout(
           <div class="cover-flat">
             <div class="cover-panel side side-1">${leftPanelContent}</div>
             <div class="cover-panel spine">${spineContent}</div>
-            <div class="cover-panel side side-2"></div>
+            <div class="cover-panel side side-2">${rightContent}</div>
           </div>
         </div>
       </body>

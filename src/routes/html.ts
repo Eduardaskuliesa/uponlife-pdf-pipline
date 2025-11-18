@@ -22,8 +22,8 @@ import {
   mergePdfs,
 } from "../lib/pdf";
 import { PDFDocument } from "pdf-lib";
-import { buildCoverLayout } from "../lib/cover1";
 import { text } from "stream/consumers";
+import { buildCoverLayout } from "../services/pdf/buildCoverLayout";
 
 export const htmlRoutes = new Hono();
 
@@ -54,19 +54,22 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     console.timeEnd("Phase 1: Data Fetching");
     const totalPageCount = 97;
     let spineWidht = Math.max(10, 0.1025 * totalPageCount);
+    console.log(`Initial spine width calculation: ${spineWidht}mm`);
     if (spineWidht < 10) {
       spineWidht = 10;
     }
-    console.log(`Calculated spine width: ${spineWidht}mm`);
     const backgroundColor = book.background_color;
     const textColor = book.text_color;
+    const bookTitle = book.title;
     console.log(textColor, backgroundColor);
     const authorName = book.author_name || "";
+    const templateID = 8;
     const html = buildCoverLayout(spineWidht, {
       backgroundColor,
       textColor,
+      bookTitle,
       authorName,
-      logoText: "Narratone",
+      templateId: templateID,
     });
     const pdf = await generatePdf(html);
     const pdfBuffer = Buffer.from(pdf);

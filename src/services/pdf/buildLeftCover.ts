@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
-import { narratoneLogo } from "./getNarratoneLogo";
-import { getUponLifeLogo } from "./getUponlifeLogo";
+import { narratoneLogo } from "../../helpers/getNarratoneLogo";
+import { getUponLifeLogo } from "../../helpers/getUponlifeLogo";
+
 
 export function buildLeftCover(options: { textColor: string }): string {
   const { textColor } = options;
@@ -9,8 +10,8 @@ export function buildLeftCover(options: { textColor: string }): string {
 
   let bottomLogoSvg = readFileSync(narratoneLogo.narratoneLogoSvgPath, "utf-8");
   bottomLogoSvg = bottomLogoSvg
-    .replace(/width="[^"]*"/g, 'width="34mm"')
-    .replace(/height="[^"]*"/g, 'height="34mm"')
+    .replace(/width="[^"]*"/g, 'width="36mm"')
+    .replace(/height="[^"]*"/g, 'height="36mm"')
     .replace(/fill="[^"]*"/g, `fill="${textColor}"`)
     .replace(/stroke="[^"]*"/g, "stroke='none'")
     .replace(/<svg/, `<svg style="display: block;"`);
@@ -35,24 +36,25 @@ export function getLeftCoverStyles(textColor: string): string {
       align-items: center;
       height: 100%;
       width: 100%;
-      box-sizing: border-box;
     }
 
     .left-top-logo {
-      padding-top: 1mm;
-      width: 16mm;
-      height: 16mm;
+      width: 15mm;
+      height: 15mm;
     }
 
     .left-bottom-section {
       display: flex;
-      padding-bottom: 14mm;
       flex-direction: column;
+      align-items: center;
+      width: 100%;
     }
 
     .left-narratone-logo {
-      margin-bottom: -10mm;
+      margin-bottom: -10.5mm;
       display: flex;
+      justify-content: center;
+      width: 100%;
     }
 
     .narratone-url {
@@ -60,6 +62,8 @@ export function getLeftCoverStyles(textColor: string): string {
       font-size: 8pt;
       font-weight: normal;
       color: ${textColor};
+      text-align: center;
+      width: 100%;
     }
   `;
 }

@@ -25,11 +25,13 @@
     "pdfjs-dist": "^5.4.394",
     "pg": "^8.16.3",
     "puppeteer-core": "^24.30.0",
+    "string-pixel-width": "^1.11.0",
     "typeorm": "^0.3.27",
     "unpdf": "^1.4.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
+    "@types/string-pixel-width": "^1.10.3",
     "nodemon": "^3.0.1",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
