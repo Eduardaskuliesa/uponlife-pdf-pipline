@@ -262,13 +262,23 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
       book.cover_image_id ?? null
     );
     console.log(`Book cover style: ${book.cover_style}`);
+    if (!book.title || !book.author_name) {
+      const missingFields = [];
+      if (!book.title) missingFields.push("title");
+      if (!book.author_name) missingFields.push("author name");
+      console.warn(
+        `Warning: Missing book ${missingFields.join(
+          " and "
+        )}. Using default values for cover generation.`
+      );
+    }
     const coverHtml = buildCoverLayout(spineWidth, {
       backgroundColor: book.background_color,
       textColor: book.text_color,
       spineText: book.spine || "",
-      bookTitle: book.title,
+      bookTitle: book.title || "Missing Title",
       backgroundImageUrl: bookCoverImageUrl,
-      authorName: book.author_name || "",
+      authorName: book.author_name || "Author Name",
       templateId: book.cover_style,
     });
 
