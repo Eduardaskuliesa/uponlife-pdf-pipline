@@ -26,7 +26,7 @@ async function start() {
   app.get("/health", (c) => c.text("OK"));
   app.route("/", pdfRoutes);
 
-  const port = 8080;
+  const port = Number(process.env.PORT) || 8080;
 
   console.log(`Server is running on port ${port}`);
 
