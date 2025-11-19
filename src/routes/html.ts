@@ -5,7 +5,6 @@ import { Section } from "../entities/section.entity";
 import { In } from "typeorm";
 import { buildBlankPage, buildHtml, buildTitlePage } from "../lib/html";
 import { buildDummyToc, buildRealToc } from "../lib/toc";
-import { uploadToS3 } from "../services/s3";
 import { File } from "../entities/file.entity";
 import { supabase } from "../services/supabase-client";
 import { Heading } from "../lib/create-heading-block";
@@ -20,6 +19,8 @@ import {
 import { PDFDocument } from "pdf-lib";
 import { buildCoverLayout } from "../services/pdf/build-cover-layout";
 import { getBookCoverImage } from "../helpers/get-book-cover-image";
+import { uploadToSupabase } from "../services/s3";
+import { v4 as uuidv4 } from "uuid";
 
 export const pdfRoutes = new Hono();
 
@@ -90,47 +91,67 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
           return { type: "heading", content: "text" in item ? item.text : "" };
 
         case "image": {
-          const parsedContent =
-            typeof item.content === "string"
-              ? JSON.parse(item.content)
-              : item.content;
-          const imageUrl = parsedContent?.data?.file?.url;
-          const imageId = imageUrl?.split("/").pop();
-          if (!imageId) throw new Error("Image reference missing url");
+          try {
+            const parsedContent =
+              typeof item.content === "string"
+                ? JSON.parse(item.content)
+                : item.content;
+            const imageUrl = parsedContent?.data?.file?.url;
+            const imageId = imageUrl?.split("/").pop();
 
-          const file = await File.findOne({ where: { id: imageId } });
-          if (!file?.path) throw new Error(`File not found: ${imageId}`);
+            if (!imageId) {
+              console.warn("Image block missing URL, skipping");
+              return null;
+            }
 
-          const { data } = await supabase.storage
-            .from("files")
-            .download(file.path);
-          if (!data) throw new Error("Failed to download image");
+            const file = await File.findOne({ where: { id: imageId } });
+            if (!file?.path) {
+              console.warn(`File not found: ${imageId}, skipping`);
+              return null;
+            }
 
-          const arrayBuffer = await data.arrayBuffer();
-          const base64 = Buffer.from(arrayBuffer).toString("base64");
-          const mimeType = file.path.endsWith(".png")
-            ? "image/png"
-            : "image/jpeg";
+            const { data } = await supabase.storage
+              .from("files")
+              .download(file.path);
+            if (!data) {
+              console.warn(`Failed to download image: ${file.path}, skipping`);
+              return null;
+            }
 
-          return {
-            type: "image",
-            content: item.content?.data?.file?.caption || "",
-            imgUrl: `data:${mimeType};base64,${base64}`,
-          };
+            const arrayBuffer = await data.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            const mimeType = file.path.endsWith(".png")
+              ? "image/png"
+              : "image/jpeg";
+
+            return {
+              type: "image",
+              content: item.content?.data?.file?.caption || "",
+              imgUrl: `data:${mimeType};base64,${base64}`,
+            };
+          } catch (error) {
+            console.warn("Error processing image block, skipping:", error);
+            return null;
+          }
         }
 
         case "paragraph":
           return { type: "paragraph", content: item.content?.data?.text || "" };
 
         default:
-          throw new Error(`Unknown block type: ${item.type}`);
+          console.warn(`Unknown block type: ${item.type}, skipping`);
+          return null;
       }
     }
 
     const normalizedChapters = await Promise.all(
       questions.map(async (question) => {
         const questionSections = sectionsByQuestion[String(question.id)] || [];
-        const blocks = await Promise.all(questionSections.map(normalizeBlock));
+        const blocks = (
+          await Promise.all(questionSections.map(normalizeBlock))
+        ).filter(
+          (block): block is Exclude<typeof block, null> => block !== null
+        );
         return { question, blocks };
       })
     );
@@ -241,13 +262,23 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
       book.cover_image_id ?? null
     );
     console.log(`Book cover style: ${book.cover_style}`);
+    if (!book.title || !book.author_name) {
+      const missingFields = [];
+      if (!book.title) missingFields.push("title");
+      if (!book.author_name) missingFields.push("author name");
+      console.warn(
+        `Warning: Missing book ${missingFields.join(
+          " and "
+        )}. Using default values for cover generation.`
+      );
+    }
     const coverHtml = buildCoverLayout(spineWidth, {
       backgroundColor: book.background_color,
       textColor: book.text_color,
       spineText: book.spine || "",
-      bookTitle: book.title,
+      bookTitle: book.title || "Missing Title",
       backgroundImageUrl: bookCoverImageUrl,
-      authorName: book.author_name || "",
+      authorName: book.author_name || "Author Name",
       templateId: book.cover_style,
     });
 
@@ -260,18 +291,21 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
     const watermarkPdf = await addWatermark(finalPdf);
     console.timeEnd("Phase 10: Watermark Generation");
 
-    // ========== PHASE 11: S3 UPLOAD ==========
-    console.time("Phase 11: S3 Upload");
-    const timestamp = Date.now();
+    // ========== PHASE 11: SUPABASE UPLOAD ==========
+    console.time("Phase 11: Supabase Upload");
+    const pdfId = uuidv4();
     const [coverUrl, pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
-      uploadToS3(coverPdfBuffer, `books/${bookId}/cover-${timestamp}.pdf`),
-      uploadToS3(Buffer.from(finalPdf), `books/${bookId}/${timestamp}.pdf`),
-      uploadToS3(
+      uploadToSupabase(coverPdfBuffer, `${bookId}/pdf/cover-${pdfId}.pdf`),
+      uploadToSupabase(
+        Buffer.from(finalPdf),
+        `${bookId}/pdf/original-${pdfId}.pdf`
+      ),
+      uploadToSupabase(
         Buffer.from(watermarkPdf),
-        `books/${bookId}/${timestamp}-watermark.pdf`
+        `${bookId}/pdf/watermark-${pdfId}.pdf`
       ),
     ]);
-    console.timeEnd("Phase 11: S3 Upload");
+    console.timeEnd("Phase 11: Supabase Upload");
 
     console.timeEnd("Total PDF Generation Time");
 
