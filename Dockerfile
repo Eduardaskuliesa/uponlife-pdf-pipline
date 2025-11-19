@@ -13,7 +13,7 @@ RUN apk add --no-cache \
 # Tell Puppeteer where Chromium is
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-ENV NODE_ENV=production
+
 
 WORKDIR /app
 
@@ -22,6 +22,7 @@ RUN npm install
 
 COPY . .
 RUN npm run build
+ENV NODE_ENV=production
 
 EXPOSE 8080
 
