@@ -8,14 +8,6 @@ import { initBrowser } from "./lib/pdf";
 async function start() {
   console.log("=== NODE.JS APP STARTING ===");
   console.log("Current time:", new Date().toISOString());
-  console.log("Environment variables loaded:");
-  console.log("AWS_REGION:", config.s3Bucket.region);
-  console.log("AWS_S3_BUCKET_NAME:", config.s3Bucket.name);
-  console.log(
-    "AWS_ACCESS_KEY_ID:",
-    config.s3Bucket.accessKeyId ? "SET" : "NOT SET"
-  );
-  // initAssets();
   await AppDataSource.initialize();
   await initBrowser();
   console.log("Database connected");
@@ -26,7 +18,7 @@ async function start() {
   app.get("/health", (c) => c.text("OK"));
   app.route("/", pdfRoutes);
 
-  const port = 8080;
+  const port = Number(process.env.PORT) || 8080;
 
   console.log(`Server is running on port ${port}`);
 
