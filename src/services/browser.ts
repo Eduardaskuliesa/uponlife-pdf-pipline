@@ -15,7 +15,6 @@ export async function initBrowser() {
     ],
     headless: true,
   });
-  console.log("Browser ready!");
 }
 
 export async function getBrowser() {
