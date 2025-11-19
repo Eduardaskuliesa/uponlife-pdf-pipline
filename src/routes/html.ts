@@ -20,6 +20,7 @@ import { PDFDocument } from "pdf-lib";
 import { buildCoverLayout } from "../services/pdf/build-cover-layout";
 import { getBookCoverImage } from "../helpers/get-book-cover-image";
 import { uploadToSupabase } from "../services/s3";
+import { v4 as uuidv4 } from "uuid";
 
 export const pdfRoutes = new Hono();
 
@@ -97,7 +98,7 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
                 : item.content;
             const imageUrl = parsedContent?.data?.file?.url;
             const imageId = imageUrl?.split("/").pop();
-            
+
             if (!imageId) {
               console.warn("Image block missing URL, skipping");
               return null;
@@ -146,8 +147,11 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
     const normalizedChapters = await Promise.all(
       questions.map(async (question) => {
         const questionSections = sectionsByQuestion[String(question.id)] || [];
-        const blocks = (await Promise.all(questionSections.map(normalizeBlock)))
-          .filter((block): block is Exclude<typeof block, null> => block !== null);
+        const blocks = (
+          await Promise.all(questionSections.map(normalizeBlock))
+        ).filter(
+          (block): block is Exclude<typeof block, null> => block !== null
+        );
         return { question, blocks };
       })
     );
@@ -279,14 +283,11 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
 
     // ========== PHASE 11: S3 UPLOAD ==========
     console.time("Phase 11: S3 Upload");
-    const timestamp = Date.now();
+    const path = `${bookId}/pdf/${uuidv4()}.pdf`;
     const [coverUrl, pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
-      uploadToSupabase(coverPdfBuffer, `books/${bookId}/cover-${timestamp}.pdf`),
-      uploadToSupabase(Buffer.from(finalPdf), `books/${bookId}/${timestamp}.pdf`),
-      uploadToSupabase(
-        Buffer.from(watermarkPdf),
-        `books/${bookId}/${timestamp}-watermark.pdf`
-      ),
+      uploadToSupabase(coverPdfBuffer, path),
+      uploadToSupabase(Buffer.from(finalPdf), path),
+      uploadToSupabase(Buffer.from(watermarkPdf), path),
     ]);
     console.timeEnd("Phase 11: S3 Upload");
 
