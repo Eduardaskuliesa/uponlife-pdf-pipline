@@ -5,7 +5,6 @@ import { Section } from "../entities/section.entity";
 import { In } from "typeorm";
 import { buildBlankPage, buildHtml, buildTitlePage } from "../lib/html";
 import { buildDummyToc, buildRealToc } from "../lib/toc";
-import { uploadToS3 } from "../services/s3";
 import { File } from "../entities/file.entity";
 import { supabase } from "../services/supabase-client";
 import { Heading } from "../lib/create-heading-block";
@@ -20,6 +19,7 @@ import {
 import { PDFDocument } from "pdf-lib";
 import { buildCoverLayout } from "../services/pdf/build-cover-layout";
 import { getBookCoverImage } from "../helpers/get-book-cover-image";
+import { uploadToSupabase } from "../services/s3";
 
 export const pdfRoutes = new Hono();
 
@@ -281,9 +281,9 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
     console.time("Phase 11: S3 Upload");
     const timestamp = Date.now();
     const [coverUrl, pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
-      uploadToS3(coverPdfBuffer, `books/${bookId}/cover-${timestamp}.pdf`),
-      uploadToS3(Buffer.from(finalPdf), `books/${bookId}/${timestamp}.pdf`),
-      uploadToS3(
+      uploadToSupabase(coverPdfBuffer, `books/${bookId}/cover-${timestamp}.pdf`),
+      uploadToSupabase(Buffer.from(finalPdf), `books/${bookId}/${timestamp}.pdf`),
+      uploadToSupabase(
         Buffer.from(watermarkPdf),
         `books/${bookId}/${timestamp}-watermark.pdf`
       ),
