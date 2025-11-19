@@ -3,7 +3,7 @@ import { serve } from "@hono/node-server";
 import { pdfRoutes } from "./routes/html";
 import config from "./config";
 import { AppDataSource } from "./data-source";
-import { initBrowser } from "./lib/pdf";
+import { initBrowser } from "./services/browser";
 
 async function start() {
   console.log("=== NODE.JS APP STARTING ===");
