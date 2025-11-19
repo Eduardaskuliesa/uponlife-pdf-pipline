@@ -1,15 +1,16 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { pdfRoutes } from "./routes/html";
-import config from "./config";
 import { AppDataSource } from "./data-source";
-import { initBrowser } from "./lib/pdf";
+import { initBrowser } from "./services/browser";
+import { pdfRoutes } from "./routes/pdf-routes";
 
 async function start() {
   console.log("=== NODE.JS APP STARTING ===");
   console.log("Current time:", new Date().toISOString());
   await AppDataSource.initialize();
-  await initBrowser();
+  initBrowser().then(() => {
+    console.log("Browser initialized");
+  });
   console.log("Database connected");
 
   const app = new Hono();
