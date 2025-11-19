@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { narratoneLogo } from "../../helpers/get-narratone-logo";
-import { getUponLifeLogo } from "../../helpers/getUponlifeLogo";
+import { getUponLifeLogo } from "../../helpers/get-uponlife-logo";
+
 
 
 export function buildLeftCover(options: { textColor: string }): string {
