@@ -90,47 +90,64 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
           return { type: "heading", content: "text" in item ? item.text : "" };
 
         case "image": {
-          const parsedContent =
-            typeof item.content === "string"
-              ? JSON.parse(item.content)
-              : item.content;
-          const imageUrl = parsedContent?.data?.file?.url;
-          const imageId = imageUrl?.split("/").pop();
-          if (!imageId) throw new Error("Image reference missing url");
+          try {
+            const parsedContent =
+              typeof item.content === "string"
+                ? JSON.parse(item.content)
+                : item.content;
+            const imageUrl = parsedContent?.data?.file?.url;
+            const imageId = imageUrl?.split("/").pop();
+            
+            if (!imageId) {
+              console.warn("Image block missing URL, skipping");
+              return null;
+            }
 
-          const file = await File.findOne({ where: { id: imageId } });
-          if (!file?.path) throw new Error(`File not found: ${imageId}`);
+            const file = await File.findOne({ where: { id: imageId } });
+            if (!file?.path) {
+              console.warn(`File not found: ${imageId}, skipping`);
+              return null;
+            }
 
-          const { data } = await supabase.storage
-            .from("files")
-            .download(file.path);
-          if (!data) throw new Error("Failed to download image");
+            const { data } = await supabase.storage
+              .from("files")
+              .download(file.path);
+            if (!data) {
+              console.warn(`Failed to download image: ${file.path}, skipping`);
+              return null;
+            }
 
-          const arrayBuffer = await data.arrayBuffer();
-          const base64 = Buffer.from(arrayBuffer).toString("base64");
-          const mimeType = file.path.endsWith(".png")
-            ? "image/png"
-            : "image/jpeg";
+            const arrayBuffer = await data.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            const mimeType = file.path.endsWith(".png")
+              ? "image/png"
+              : "image/jpeg";
 
-          return {
-            type: "image",
-            content: item.content?.data?.file?.caption || "",
-            imgUrl: `data:${mimeType};base64,${base64}`,
-          };
+            return {
+              type: "image",
+              content: item.content?.data?.file?.caption || "",
+              imgUrl: `data:${mimeType};base64,${base64}`,
+            };
+          } catch (error) {
+            console.warn("Error processing image block, skipping:", error);
+            return null;
+          }
         }
 
         case "paragraph":
           return { type: "paragraph", content: item.content?.data?.text || "" };
 
         default:
-          throw new Error(`Unknown block type: ${item.type}`);
+          console.warn(`Unknown block type: ${item.type}, skipping`);
+          return null;
       }
     }
 
     const normalizedChapters = await Promise.all(
       questions.map(async (question) => {
         const questionSections = sectionsByQuestion[String(question.id)] || [];
-        const blocks = await Promise.all(questionSections.map(normalizeBlock));
+        const blocks = (await Promise.all(questionSections.map(normalizeBlock)))
+          .filter((block): block is Exclude<typeof block, null> => block !== null);
         return { question, blocks };
       })
     );
