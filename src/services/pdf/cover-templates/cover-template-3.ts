@@ -1,5 +1,5 @@
 import pixelWidth from "string-pixel-width";
-import { getLongestWord } from "../utils/getLongestWord";
+import { getLongestWord } from "../utils/get-longest-word";
 import { CoverTemplateOptions } from "../../../types/template";
 
 export function buildCoverTemplate3(options: CoverTemplateOptions): string {

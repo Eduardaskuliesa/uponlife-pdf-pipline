@@ -1,5 +1,5 @@
 import path from "path";
-import { getUponLifeLogo } from "../../../helpers/getUponlifeLogo";
+import { getUponLifeLogo } from "../../../helpers/get-uponlife-logo";
 import { readFileSync } from "fs";
 import { CoverTemplateOptions } from "../../../types/template";
 

@@ -1,6 +1,6 @@
 import { CoverTemplateOptions } from "../../../types/template";
-import { calculateTextWidth } from "../utils/calculateTextWidth";
-import { getLongestWord } from "../utils/getLongestWord";
+import { calculateTextWidth } from "../utils/calculate-text-width";
+import { getLongestWord } from "../utils/get-longest-word";
 
 
 

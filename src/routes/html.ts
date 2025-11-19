@@ -3,13 +3,8 @@ import { Book } from "../entities/book.entity";
 import { Question } from "../entities/questions.entity";
 import { Section } from "../entities/section.entity";
 import { In } from "typeorm";
-import {
-  buildBlankPage,
-  buildDummyToc,
-  buildHtml,
-  buildRealToc,
-  buildTitlePage,
-} from "../lib/html";
+import { buildBlankPage, buildHtml, buildTitlePage } from "../lib/html";
+import { buildDummyToc, buildRealToc } from "../lib/toc";
 import { uploadToS3 } from "../services/s3";
 import { File } from "../entities/file.entity";
 import { supabase } from "../services/supabase-client";
@@ -23,28 +18,12 @@ import {
   mergePdfs,
 } from "../lib/pdf";
 import { PDFDocument } from "pdf-lib";
-import { buildCoverLayout } from "../services/pdf/buildCoverLayout";
-import { defaultCoverImg } from "../helpers/getDefaultCoverImg";
+import { buildCoverLayout } from "../services/pdf/build-cover-layout";
+import { getBookCoverImage } from "../helpers/get-book-cover-image";
 
-export const htmlRoutes = new Hono();
+export const pdfRoutes = new Hono();
 
-async function getBookCoverImage(imgId: string | null): Promise<string> {
-  if (!imgId) return defaultCoverImg;
-
-  const file = await File.findOne({ where: { id: imgId } });
-  if (!file?.path) return defaultCoverImg;
-
-  const { data } = await supabase.storage.from("files").download(file.path);
-  if (!data) return defaultCoverImg;
-
-  const arrayBuffer = await data.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString("base64");
-  const mimeType = file.path.endsWith(".png") ? "image/png" : "image/jpeg";
-
-  return `data:${mimeType};base64,${base64}`;
-}
-
-htmlRoutes.post("/generate-html/:bookId", async (c) => {
+pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
   console.time("Total PDF Generation Time");
   const bookId = c.req.param("bookId");
 
@@ -258,7 +237,9 @@ htmlRoutes.post("/generate-html/:bookId", async (c) => {
     const spineWidth = Math.max(10, 0.1025 * totalPages);
     console.log(`Final spine width: ${spineWidth}mm for ${totalPages} pages`);
 
-    const bookCoverImageUrl = await getBookCoverImage(book.cover_image_id);
+    const bookCoverImageUrl = await getBookCoverImage(
+      book.cover_image_id ?? null
+    );
     console.log(`Book cover style: ${book.cover_style}`);
     const coverHtml = buildCoverLayout(spineWidth, {
       backgroundColor: book.background_color,

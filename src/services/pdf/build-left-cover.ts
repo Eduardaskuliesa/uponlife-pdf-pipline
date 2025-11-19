@@ -1,5 +1,5 @@
 import { readFileSync } from "fs";
-import { narratoneLogo } from "../../helpers/getNarratoneLogo";
+import { narratoneLogo } from "../../helpers/get-narratone-logo";
 import { getUponLifeLogo } from "../../helpers/getUponlifeLogo";
 
 

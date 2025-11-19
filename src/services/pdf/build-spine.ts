@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
-import { narratoneLogo } from "../../helpers/getNarratoneLogo";
-import { getUponLifeLogo } from "../../helpers/getUponlifeLogo";
+import { narratoneLogo } from "../../helpers/get-narratone-logo";
+import { getUponLifeLogo } from "../../helpers/get-uponlife-logo";
 
 type SpineOptions = {
   textColor: string;

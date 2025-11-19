@@ -1,8 +1,9 @@
 import path from "path";
 import { readFileSync } from "fs";
-import { buildSpineContent, getSpineStyles } from "./buildSpine";
-import { buildLeftCover, getLeftCoverStyles } from "./buildLeftCover";
-import { getCoverTemplate } from "../../helpers/getCoverTemplate";
+import { buildSpineContent, getSpineStyles } from "./build-spine";
+import { buildLeftCover, getLeftCoverStyles } from "./build-left-cover";
+import { getCoverTemplate } from "./utils/get-cover-templates";
+
 
 type CoverLayoutOptions = {
   backgroundColor?: string;

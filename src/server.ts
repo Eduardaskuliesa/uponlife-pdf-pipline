@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { pdfRoutes } from "./routes/pdf";
-import { htmlRoutes } from "./routes/html";
+import { pdfRoutes } from "./routes/html";
 import config from "./config";
 import { AppDataSource } from "./data-source";
 import { initBrowser } from "./lib/pdf";
@@ -25,9 +24,7 @@ async function start() {
 
   app.get("/", (c) => c.text("PDF Generation Service is running."));
   app.get("/health", (c) => c.text("OK"));
-
   app.route("/", pdfRoutes);
-  app.route("/", htmlRoutes);
 
   const port = 8080;
 

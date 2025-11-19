@@ -1,44 +1,14 @@
 import { Block } from "../types";
 import { readFileSync } from "fs";
 import path from "path";
-
-const narrtoneLogoPath = path.resolve(
-  process.cwd(),
-  "src/assets/Narratone-logo-header.svg"
-);
+import { cormorant } from "../helpers/get-cormorant-fonts";
+import { arial } from "../helpers/get-arial-font";
 
 const headingDecor = path.resolve(
   process.cwd(),
   "src/assets/signal-2025-11-13-180533.svg"
 );
 const logoPath = path.resolve(process.cwd(), "src/assets/logo_black.png");
-const fontRegularPath = path.resolve(
-  process.cwd(),
-  "src/fonts/cormorant/Cormorant-Regular.ttf"
-);
-
-const fontMediumPath = path.resolve(
-  process.cwd(),
-  "src/fonts/cormorant/Cormorant-Medium.ttf"
-);
-const fontBoldPath = path.resolve(
-  process.cwd(),
-  "src/fonts/cormorant/Cormorant-SemiBold.ttf"
-);
-const fontItalicPath = path.resolve(
-  process.cwd(),
-  "src/fonts/cormorant/Cormorant-Italic.ttf"
-);
-const fontBoldItalicPath = path.resolve(
-  process.cwd(),
-  "src/fonts/cormorant/Cormorant-SemiBoldItalic.ttf"
-);
-
-const fontArialPath = path.resolve(process.cwd(), "src/fonts/arial.ttf");
-
-const narrtoneLogoBase64 = `data:image/svg+xml;base64,${readFileSync(
-  narrtoneLogoPath
-).toString("base64")}`;
 
 const headingDecorBase64 = `data:image/svg+xml;base64,${readFileSync(
   headingDecor
@@ -46,27 +16,6 @@ const headingDecorBase64 = `data:image/svg+xml;base64,${readFileSync(
 const logoBase64 = `data:image/png;base64,${readFileSync(logoPath).toString(
   "base64"
 )}`;
-const fontRegularBase64 = `data:font/ttf;base64,${readFileSync(
-  fontRegularPath
-).toString("base64")}`;
-
-const fontMediumBase64 = `data:font/ttf;base64,${readFileSync(
-  fontMediumPath
-).toString("base64")}`;
-
-const fontBoldBase64 = `data:font/ttf;base64,${readFileSync(
-  fontBoldPath
-).toString("base64")}`;
-const fontItalicBase64 = `data:font/ttf;base64,${readFileSync(
-  fontItalicPath
-).toString("base64")}`;
-const fontBoldItalicBase64 = `data:font/ttf;base64,${readFileSync(
-  fontBoldItalicPath
-).toString("base64")}`;
-
-const fontArialBase64 = `data:font/ttf;base64,${readFileSync(
-  fontArialPath
-).toString("base64")}`;
 
 export function buildHtml(
   blocks: Block[],
@@ -117,25 +66,25 @@ export function buildHtml(
           }
           @font-face {
             font-family: 'Cormorant';
-            src: url('${fontRegularBase64}');
+            src: url('${cormorant.regular}');
             font-weight: normal;
             font-style: normal;
           }
           @font-face {
             font-family: 'Cormorant';
-            src: url('${fontBoldBase64}');
+            src: url('${cormorant.bold}');
             font-weight: bold;
             font-style: normal;
           }
           @font-face {
             font-family: 'Cormorant';
-            src: url('${fontItalicBase64}');
+            src: url('${cormorant.italic}');
             font-weight: normal;
             font-style: italic;
           }
           @font-face {
             font-family: 'Cormorant';
-            src: url('${fontBoldItalicBase64}');
+            src: url('${cormorant.boldItalic}');
             font-weight: bold;
             font-style: italic;
           }
@@ -244,169 +193,6 @@ export function buildHtml(
     </html>
   `;
 }
-export const buildDummyToc = (chapterTitles: string[]) => {
-  const tocItems = chapterTitles
-    .map((title, index) => {
-      return `
-      <div class="toc-item">
-        <span class="toc-title">${title}</span>
-        <span class="toc-page">99</span>
-      </div>
-    `;
-    })
-    .join("");
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-         <style>
-          @page {
-            size: 152mm 228mm;
-            margin: 14mm 14mm 28mm 14mm;
-          }
-          @font-face {
-            font-family: 'Cormorant';
-            src: url('${fontRegularBase64}');
-            font-weight: normal;
-            font-style: normal;
-          }
-          body {
-            font-family: 'Cormorant', serif;
-            margin: 0;
-            padding: 0;
-            counter-reset: page 2;
-          }
-
-          .toc-heading {
-            font-family: 'Cormorant', serif;
-            font-size: 18pt;
-            font-weight: normal;
-            fonst-style: normal;
-            text-align: center;
-            text-transform: uppercase;
-            margin-bottom: 14mm;
-          }
-
-          .toc-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 4mm;
-            line-height: 1.2;
-          }
-
-          .toc-title {
-            font-family: 'Cormorant', serif;
-            font-size: 10pt;
-            text-transform: uppercase;
-            flex: 1;
-            max-width: calc(100% - 25mm);
-          }
-
-          .toc-page {
-            font-family: 'Arial', sans-serif;
-            font-size: 10pt;
-            text-align: right;
-            min-width: 20mm;
-          }
-        </style>
-      </head>
-      <body>
-        <h1 class="toc-heading">Table of Contents</h1>
-        ${tocItems}
-      </body>
-    </html>
-  `;
-};
-
-export function buildRealToc(
-  chapters: Array<{ title: string; page: number }>,
-  tocPageCount: number
-): string {
-  const tocItems = chapters
-    .map((chapter) => {
-      return `
-      <div class="toc-item">
-        <span class="toc-title">${chapter.title}</span>
-        <span class="toc-page">${chapter.page}</span>
-      </div>
-    `;
-    })
-    .join("");
-
-  const needsBlankPage = tocPageCount % 2 === 1;
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          @page {
-            size: 152mm 228mm;
-            margin: 14mm 14mm 28mm 14mm;
-          }
-          @font-face {
-            font-family: 'Cormorant';
-            src: url('${fontRegularBase64}');
-            font-weight: normal;
-            font-style: normal;
-          }
-          body {
-            font-family: 'Cormorant', serif;
-            margin: 0;
-            padding: 0;
-            counter-reset: page 2;
-          }
-
-          .toc-heading {
-            font-family: 'Cormorant', serif;
-            font-size: 18pt;
-            font-weight: normal;
-            fonst-style: normal;
-            text-align: center;
-            text-transform: uppercase;
-            margin-bottom: 14mm;
-          }
-
-          .toc-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 4mm;
-            line-height: 1.2;
-          }
-
-          .toc-title {
-            font-family: 'Cormorant', serif;
-            font-size: 10pt;
-            text-transform: uppercase;
-            flex: 1;
-            max-width: calc(100% - 25mm);
-          }
-
-          .toc-page {
-            font-family: 'Arial', sans-serif;
-            font-size: 10pt;
-            text-align: right;
-            min-width: 20mm;
-          }
-        </style>
-      </head>
-      <body>
-        <h1 class="toc-heading">Table of Contents</h1>
-        ${tocItems}
-        ${
-          needsBlankPage
-            ? '<div style="page-break-before: always; height: 100%;"></div>'
-            : ""
-        }
-      </body>
-    </html>
-  `;
-}
 
 export function buildTitlePage(author: string, title?: string): string {
   return `
@@ -421,20 +207,20 @@ export function buildTitlePage(author: string, title?: string): string {
           }
           @font-face {
             font-family: 'Cormorant';
-            src: url('${fontRegularBase64}');
+            src: url('${cormorant.regular}');
             font-weight: normal;
             font-style: normal;
           }
 
           @font-face {
             font-family: 'Arial';
-            src: url('${fontArialBase64}');
+            src: url('${arial}');
             font-weight: normal;
             font-style: normal;
           }
           @font-face {
             font-family: 'Cormorant';
-            src: url('${fontMediumBase64}');
+            src: url('${cormorant.medium}');
             font-weight: medium;
             font-style: normal;
           }

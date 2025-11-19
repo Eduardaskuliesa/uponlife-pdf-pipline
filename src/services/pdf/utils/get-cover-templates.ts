@@ -2,36 +2,36 @@ import { build } from "pdfjs-dist";
 import {
   buildCoverTemplate1,
   getCoverTemplate1Styles,
-} from "../services/pdf/cover-templates/cover-template-1";
+} from "../cover-templates/cover-template-1";
 import {
   buildCoverTemplate2,
   getCoverTemplate2Styles,
-} from "../services/pdf/cover-templates/cover-template-2";
+} from "../cover-templates/cover-template-2";
 import {
   buildCoverTemplate3,
   getCoverTemplate3Styles,
-} from "../services/pdf/cover-templates/cover-template-3";
+} from "../cover-templates/cover-template-3";
 import {
   buildCoverTemplate4,
   getCoverTemplate4Styles,
-} from "../services/pdf/cover-templates/cover-template-4";
+} from "../cover-templates/cover-template-4";
 import {
   buildCoverTemplate5,
   getCoverTemplate5Styles,
-} from "../services/pdf/cover-templates/cover-template-5";
+} from "../cover-templates/cover-template-5";
 import {
   buildCoverTemplate6,
   getCoverTemplate6Styles,
-} from "../services/pdf/cover-templates/cover-template-6";
+} from "../cover-templates/cover-template-6";
 import {
   buildCoverTemplate7,
   getCoverTemplate7Styles,
-} from "../services/pdf/cover-templates/cover-template-7";
+} from "../cover-templates/cover-template-7";
 import {
   buildCoverTemplate8,
   getCoverTemplate8Styles,
-} from "../services/pdf/cover-templates/cover-template-8";
-import { CoverTemplateOptions } from "../types/template";
+} from "../cover-templates/cover-template-8";
+import { CoverTemplateOptions } from "../../../types/template";
 
 type TemplateResult = {
   content: string;

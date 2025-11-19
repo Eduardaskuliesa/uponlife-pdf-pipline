@@ -75,7 +75,8 @@ export async function mergePdfs(
     copiedPages.forEach((page) => mergedPdf.addPage(page));
   }
 
-  return await mergedPdf.save();
+  const pdfBytes = await mergedPdf.save();
+  return pdfBytes.buffer as ArrayBuffer;
 }
 
 export async function addPageNumbers(

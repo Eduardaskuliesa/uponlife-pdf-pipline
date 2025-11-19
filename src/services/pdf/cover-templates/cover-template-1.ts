@@ -1,7 +1,8 @@
 import { readFileSync } from "fs";
 import pixelWidth from "string-pixel-width";
-import { getUponLifeLogo } from "../../../helpers/getUponlifeLogo";
+
 import { CoverTemplateOptions } from "../../../types/template";
+import { getUponLifeLogo } from "../../../helpers/get-uponlife-logo";
 
 export function buildCoverTemplate1(options: CoverTemplateOptions): string {
   const { textColor, bookTitle, authorName, bookCoverImageUrl } = options;
