@@ -285,9 +285,9 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
     console.time("Phase 11: S3 Upload");
     const path = `${bookId}/pdf/${uuidv4()}.pdf`;
     const [coverUrl, pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
-      uploadToSupabase(coverPdfBuffer, path),
-      uploadToSupabase(Buffer.from(finalPdf), path),
-      uploadToSupabase(Buffer.from(watermarkPdf), path),
+      uploadToSupabase(coverPdfBuffer, `cover-${path}`),
+      uploadToSupabase(Buffer.from(finalPdf), `original-${path}`),
+      uploadToSupabase(Buffer.from(watermarkPdf), `watermark-${path}`),
     ]);
     console.timeEnd("Phase 11: S3 Upload");
 
