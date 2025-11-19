@@ -291,15 +291,21 @@ pdfRoutes.post("/generate-pdf/:bookId", async (c) => {
     const watermarkPdf = await addWatermark(finalPdf);
     console.timeEnd("Phase 10: Watermark Generation");
 
-    // ========== PHASE 11: S3 UPLOAD ==========
-    console.time("Phase 11: S3 Upload");
+    // ========== PHASE 11: SUPABASE UPLOAD ==========
+    console.time("Phase 11: Supabase Upload");
     const pdfId = uuidv4();
     const [coverUrl, pdfUrlNormal, pdfUrlWatermark] = await Promise.all([
       uploadToSupabase(coverPdfBuffer, `${bookId}/pdf/cover-${pdfId}.pdf`),
-      uploadToSupabase(Buffer.from(finalPdf), `${bookId}/pdf/original-${pdfId}.pdf`),
-      uploadToSupabase(Buffer.from(watermarkPdf), `${bookId}/pdf/watermark-${pdfId}.pdf`),
+      uploadToSupabase(
+        Buffer.from(finalPdf),
+        `${bookId}/pdf/original-${pdfId}.pdf`
+      ),
+      uploadToSupabase(
+        Buffer.from(watermarkPdf),
+        `${bookId}/pdf/watermark-${pdfId}.pdf`
+      ),
     ]);
-    console.timeEnd("Phase 11: S3 Upload");
+    console.timeEnd("Phase 11: Supabase Upload");
 
     console.timeEnd("Total PDF Generation Time");
 
